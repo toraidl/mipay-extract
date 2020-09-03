@@ -78,6 +78,32 @@ rmprop() {
     fi
 }
 
+# from magisk util_functions.sh
+getprop() {
+  local REGEX="s/^$1=//p"
+  shift
+  local FILES=$@
+  [ -z "$FILES" ] && FILES='/system/build.prop'
+  sed -n "$REGEX" $FILES 2>/dev/null | head -n 1
+}
+
+setup_mntpoint() {
+  local POINT=$1
+  [ -L $POINT ] && mv -f $POINT ${POINT}_link
+  if [ ! -d $POINT ]; then
+    rm -f $POINT
+    mkdir -p $POINT
+  fi
+}
+
+umount_mntpoint() {
+    local POINT=$1
+    if [ -L "${POINT}_link" ]; then
+      rm -rf $POINT
+      mv -f ${POINT}_link $POINT
+    fi
+}
+
 print "*******************************"
 print "* MIUI 9/10 xiaomi.eu Rom Fix *"
 print "*******************************"
@@ -85,9 +111,11 @@ print "by @linusyang"
 print "version: $ver"
 
 print "Mounting filesystems..."
-mount /system
-if mount | grep ro | grep -q /system; then
-    mount -o remount,rw /system || print "Failed to mount read-write!"
+if [ ! -f /system/build.prop ]; then
+    setup_mntpoint /system
+    sysEvent=$(grep -l system /sys/dev/block/*/uevent)
+    blkId=$(getprop DEVNAME $sysEvent)
+    mount -o rw /dev/block/${blkId} /system
     print 'Remount as read-write...'
 fi
 
@@ -142,5 +170,6 @@ done
 #extra_patches
 
 umount /system
+umount_mntpoint /system
 cleanup
 print "Finished!"
