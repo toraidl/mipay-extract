@@ -28,6 +28,8 @@ case $key in
 esac
 done
 
+NO_EXTRA_FBE="yes"
+
 mipay_apps="Calendar SecurityCenter"
 private_apps=""
 [ -z "$EXTRA_PRIV" ] || private_apps="$private_apps $EXTRA_PRIV"
@@ -107,7 +109,7 @@ popd() {
 update_international_build_flag() {
     path=$1
     pattern="Lmiui/os/Build;->IS_INTERNATIONAL_BUILD"
-    
+
     if [ -d $path ]; then
         found=()
         if [[ "$OSTYPE" == "cygwin"* ]]; then
@@ -166,9 +168,10 @@ deodex() {
             dexclass="classes.dex"
             $baksmali d $apkfile -o $apkdir/smali || return 1
             if [[ "$app" == "Calendar" ]]; then
-                $patchmethod $apkdir/smali/com/miui/calendar/util/LocalizationUtils.smali \
-                             showsDayDiff showsLunarDate showsWidgetHoliday -showsWorkFreeDay \
-                             -isMainlandChina -isGreaterChina || return 1
+                lunarSmali=$(grep SIMPLIFIED_CHINESE -l $apkdir/smali/com/miui/calendar/util/*.smali)
+                sed -i '/0x7f0/{N;N;N;N;
+                a const/4 p0, 0x1
+                }' $lunarSmali
             fi
 
             if [[ "$app" == "Weather" ]]; then
@@ -297,7 +300,6 @@ extract() {
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}priv-app/$f >/dev/null || clean "$work_dir"
     done
     for f in $priv_apps; do
-        echo "----> copying $f..."
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
     done
     arch="arm64"
