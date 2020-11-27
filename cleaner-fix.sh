@@ -30,8 +30,9 @@ done
 
 NO_EXTRA_FBE="yes"
 
-mipay_apps="Calendar SecurityCenter"
-private_apps=""
+eufix_apps="Calendar SecurityCenter"
+private_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService"
+
 [ -z "$EXTRA_PRIV" ] || private_apps="$private_apps $EXTRA_PRIV"
 
 base_dir=$PWD
@@ -163,53 +164,60 @@ deodex() {
         apkfile=$apkdir/$app
     fi
     file_list="$($sevenzip l "$apkfile")"
-    if [[ "$file_list" == *"classes.dex"* ]]; then
+    if [[ "$file_list" == *"classes.dex"* && "$private_apps" == *"$app"* ]]; then
+        echo "--> already deodexed $app"
+        if [[ "$app" == "UPTsmService" ]] ; then
+            echo "----> extract native library..."
+            soarch="arm64-v8a"
+            if [[ "$arch" == "arm" ]]; then
+                soarch="armeabi-v7a"
+            fi
+            $sevenzip x -o"$apkdir" "$apkfile" "lib/$soarch" >/dev/null || return 1
+            mv "$apkdir/lib/$soarch" "$apkdir/lib/$arch"
+        fi
+    elif [[ "$file_list" == *"classes.dex"* ]]; then
         echo "--> decompiling $app..."
-            dexclass="classes.dex"
-            $baksmali d $apkfile -o $apkdir/smali || return 1
-            if [[ "$app" == "Calendar" ]]; then
-                lunarSmali=$(grep SIMPLIFIED_CHINESE -l $apkdir/smali/com/miui/calendar/util/*.smali)
-                sed -i '/0x7f0/{N;N;N;N;
-                a const/4 p0, 0x1
-                }' $lunarSmali
-            fi
+        dexclass="classes.dex"
+        $baksmali d $apkfile -o $apkdir/smali || return 1
+        if [[ "$app" == "Calendar" ]]; then
+            lunarSmali=$(grep SIMPLIFIED_CHINESE -l $apkdir/smali/com/miui/calendar/util/*.smali)
+            sed -i '/0x7f0/{N;N;N;N;
+            a const/4 p0, 0x1
+            }' $lunarSmali
+        fi
 
-            if [[ "$app" == "Weather" ]]; then
-                echo "----> searching smali..."
-                update_international_build_flag "$apkdir/smali/com/miui/weather2"
-                i="$apkdir/smali/com/miui/weather2/tools/ToolUtils.smali"
-                if [ -f "$i" ]; then
-                    $patchmethod "$i" -canRequestCommercial -canRequestCommercialInfo || return 1
-                fi
-            fi
+        if [[ "$app" == "Weather" ]]; then
+            echo "----> searching smali..."
+            update_international_build_flag "$apkdir/smali/com/miui/weather2"
+        fi
 
-            if [[ "$app" == "SecurityCenter" ]]; then
-                update_international_build_flag "$apkdir/smali/com/miui/antivirus/activity/SettingsActivity.smali"
-            fi
+        if [[ "$app" == "SecurityCenter" ]]; then
+            update_international_build_flag "$apkdir/smali/com/miui/antivirus/activity/SettingsActivity.smali"
+        fi
 
-            if [[ "$app" == "DeskClock" ]]; then
-                echo "----> searching smali..."
-                update_international_build_flag "$apkdir/smali/com/android/deskclock/settings/SettingsActivity.smali"
-                update_international_build_flag "$apkdir/smali/com/android/deskclock/util/Util.smali"
-            fi
+        if [[ "$app" == "DeskClock" ]]; then
+            echo "----> searching smali..."
+            update_international_build_flag "$apkdir/smali/com/android/deskclock/settings/SettingsActivity.smali"
+            update_international_build_flag "$apkdir/smali/com/android/deskclock/util/Util.smali"
+        fi
 
-            if [[ "$app" == "services.jar" ]]; then
-                i="$apkdir/smali/com/android/server/net/NetworkStatsService.smali"
-                $sed -i 's|, 0x200000$|, 0x5000000|g' "$i" || return 1
-                $sed -i 's|, 0x20000$|, 0x1000000|g' "$i" || return 1
-                if grep -q -F ', 0x20000' $i; then
-                    echo "----> ! failed to patch: $(basename $i)"
-                else
-                    echo "----> patched smali: $(basename $i)"
-                fi
+        if [[ "$app" == "services.jar" ]]; then
+            i="$apkdir/smali/com/android/server/net/NetworkStatsService.smali"
+            $sed -i 's|, 0x200000$|, 0x5000000|g' "$i" || return 1
+            $sed -i 's|, 0x20000$|, 0x1000000|g' "$i" || return 1
+            if grep -q -F ', 0x20000' $i; then
+                echo "----> ! failed to patch: $(basename $i)"
+            else
+                echo "----> patched smali: $(basename $i)"
             fi
+        fi
 
-            $smali assemble -a $api $apkdir/smali -o $apkdir/$dexclass || return 1
-            rm -rf $apkdir/smali
-            if [[ ! -f $apkdir/$dexclass ]]; then
-                echo "----> failed to baksmali: $apkdir/$dexclass"
-                continue
-            fi
+        $smali assemble -a $api $apkdir/smali -o $apkdir/$dexclass || return 1
+        rm -rf $apkdir/smali
+        if [[ ! -f $apkdir/$dexclass ]]; then
+            echo "----> failed to baksmali: $apkdir/$dexclass"
+            continue
+        fi
         $sevenzip d "$apkfile" $dexclass >/dev/null
         pushd $apkdir
         adderror=false
@@ -249,7 +257,7 @@ extract() {
     file=$3
     apps=$4
     priv_apps=$5
-    dir=miuieu-$model-$ver
+    dir=miui-$model-$ver
     img=$dir-system.img
 
     echo "--> rom: $model v$ver"
@@ -291,17 +299,28 @@ extract() {
 
     echo "--> copying apps"
     $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}build.prop >/dev/null || clean "$work_dir"
-    file_list="$($sevenzip l "$img" ${imgroot}priv-app/Weather)"
-    if [[ "$file_list" == *Weather* ]]; then
-        apps="$apps Weather"
-    fi
     for f in $apps; do
         echo "----> copying $f..."
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}priv-app/$f >/dev/null || clean "$work_dir"
     done
+
+    #    cp ../weather.apk "${work_dir}/system/priv-app/Weather/Weather.apk"
+
+    file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
+    if [[ "$file_list" == *Weather* ]]; then
+        echo "----> copying Weather..."
+        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
+        mkdir -p deodex/system/priv-app/Weather
+        cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/
+        rm -rf deodex/system/data-app/
+        apps="$apps Weather"
+    fi
+
     for f in $priv_apps; do
+        echo "----> copying $f..."
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
     done
+
     arch="arm64"
     for f in $apps; do
         deodex "$work_dir" "$f" "$arch" priv-app || clean "$work_dir"
@@ -309,17 +328,6 @@ extract() {
     for f in $priv_apps; do
         deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" || clean "$work_dir"
     done
-
-    file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
-    if [[ "$file_list" == *Weather* ]]; then
-    echo "--> patching weather"
-    rm -f ../weather-*.apk
-    $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
-    cp deodex/system/data-app/Weather/Weather.apk ../weather-$model-$ver-orig.apk
-    deodex "$work_dir" Weather "$arch" data-app || clean "$work_dir"
-    mv deodex/system/data-app/Weather/Weather.apk ../weather-$model-$ver-mod.apk
-    rm -rf deodex/system/data-app/
-    fi
 
     echo "--> packaging flashable zip"
     pushd deodex
@@ -339,7 +347,6 @@ extract() {
     trap - INT
     popd
     echo "--> done"
-    popd
 }
 
 trap "echo '--> abort'; exit 1" INT
@@ -356,16 +363,16 @@ trap - INT
 hasfile=false
 for f in *.zip; do
     arr=(${f//_/ })
-    if [[ "${arr[0]}" != "xiaomi.eu" ]]; then
+    if [[ "${arr[0]}" != "miui" ]]; then
         continue
     fi
     if [ -f $f.aria2 ]; then
         echo "--> skip incomplete file: $f"
         continue
     fi
-    model=${arr[2]}
-    ver=${arr[3]}
-    extract $model $ver $f "$mipay_apps" "$private_apps"
+    model=${arr[1]}
+    ver=${arr[2]}
+    extract $model $ver $f "$eufix_apps" "$private_apps"
     hasfile=true
 done
 
