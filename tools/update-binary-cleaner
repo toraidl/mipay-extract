@@ -2,6 +2,7 @@
 
 ver=
 tmp=/tmp/cleaner-fix-apps
+default_prop=/system/build.prop
 imgroot=
 
 if [ "$3" ]; then
@@ -78,12 +79,26 @@ rmprop() {
     fi
 }
 
+setprop() {
+    if ! [ -f "$default_prop" ]; then
+        default_prop="${imgroot}${default_prop}"
+    fi
+    if ! [ -f "$default_prop" ]; then
+        abort "build.prop not found."
+    fi
+    if grep -q "^[[:space:]]*$1[[:space:]]*=" "$default_prop"; then
+        sed -i "s/^[[:space:]]*$1[[:space:]]*=.*$/$1=$2/g" "$default_prop"
+    else
+        echo "$1=$2" >> "$default_prop"
+    fi
+}
+
 # from magisk util_functions.sh
 getprop() {
   local REGEX="s/^$1=//p"
   shift
   local FILES=$@
-  [ -z "$FILES" ] && FILES='/system/build.prop'
+  [ -z "$FILES" ] && FILES=$default_prop
   sed -n "$REGEX" $FILES 2>/dev/null | head -n 1
 }
 
@@ -111,7 +126,7 @@ print "by @linusyang"
 print "version: $ver"
 
 print "Mounting filesystems..."
-if [ ! -f /system/build.prop ]; then
+if [ ! -f "$default_prop" ]; then
     setup_mntpoint /system
     sysEvent=$(grep -l system /sys/dev/block/*/uevent)
     blkId=$(getprop DEVNAME $sysEvent)
@@ -168,6 +183,16 @@ for f in $app_list; do
 done
 
 #extra_patches
+print "Fixing build.prop for MiPay..."
+setprop "ro.se.type" "eSE,HCE,UICC" || abort "Failed to patch build.prop"
+setprop "ro.telephony.default_network" "22,22"
+setprop "ro.miui.region" "CN"
+setprop "ro.miui.wifi.region" "CN"
+setprop "ro.miui.cust_variant" "cn"
+setprop "ro.product.locale" "zh-CN"
+setprop "ro.product.locale.language" "zh"
+setprop "ro.product.locale.region" "CN"
+sed -i '/Berlin/d' "$default_prop"
 
 umount /system
 umount_mntpoint /system
