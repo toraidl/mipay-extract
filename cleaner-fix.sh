@@ -165,7 +165,6 @@ deodex() {
     file_list="$($sevenzip l "$apkfile")"
     if [[ "$file_list" == *"classes.dex"* && "$private_apps" == *"$app"* ]]; then
         echo "--> already deodexed $app"
-        rm -rf $deoappdir/$app/oat
         if [[ "$app" == "UPTsmService" ]] ; then
             echo "----> extract native library..."
             soarch="arm64-v8a"
@@ -186,7 +185,7 @@ deodex() {
             }' $lunarSmali
         fi
 
-        if [[ "$app" == "Weather" ]]; then
+        if [[ "$app" == "Weather2" ]]; then
             echo "----> searching smali..."
             update_international_build_flag "$apkdir/smali/com/miui/weather2"
         fi
@@ -247,6 +246,7 @@ deodex() {
             fi
         fi
     fi
+    rm -rf $deoappdir/$app/oat
     popd
     return 0
 }
@@ -304,22 +304,20 @@ extract() {
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}priv-app/$f >/dev/null || clean "$work_dir"
     done
 
-    mkdir -p deodex/system/priv-app/Weather
-    cp ../Weather.apk deodex/system/priv-app/Weather/
-    # apps="$apps Weather"
+    # cp ../Weather.apk deodex/system/app/Weather/
 
-    # file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
-    # if [[ "$file_list" == *Weather* ]]; then
-    #     echo "----> copying Weather..."
-    #     $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
-    #     mkdir -p deodex/system/priv-app/Weather
-    #     cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/
-    #     rm -rf deodex/system/data-app/
-    #     apps="$apps Weather"
-    # fi
+    file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
+    if [[ "$file_list" == *Weather* ]]; then
+        echo "----> copying Weather..."
+        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
+        mkdir -p deodex/system/priv-app/Weather2
+        cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather2/Weather2.apk
+        rm -rf deodex/system/data-app/
+        apps="$apps Weather2"
+    fi
 
     for f in $priv_apps; do
-        echo "----> copying $f..."
+        echo "----> copying priv $f..."
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
     done
 
@@ -343,6 +341,7 @@ extract() {
     $sed -i "s/versionCode=.*/versionCode=$versionCode/" "$tool_dir/module.prop"
     cp "$tool_dir/module.prop" module.prop
     cp "$tool_dir/system.prop" system.prop
+    cp "$tool_dir/customize.sh" customize.sh
     rm -f ../../eufix-$model-$ver.zip system/build.prop
     $sevenzip a -tzip ../../eufix-$model-$ver.zip . >/dev/null
 
