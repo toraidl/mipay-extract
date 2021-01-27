@@ -150,7 +150,6 @@ deodex() {
     base_dir="$1"
     arch=$3
     deoappdir=system/$4
-    deoarch=oat/$arch
     framedir=system/framework
     pushd "$base_dir"
     api=$(grep "ro.build.version.sdk" system/build.prop | cut -d"=" -f2)
@@ -166,6 +165,7 @@ deodex() {
     file_list="$($sevenzip l "$apkfile")"
     if [[ "$file_list" == *"classes.dex"* && "$private_apps" == *"$app"* ]]; then
         echo "--> already deodexed $app"
+        rm -rf $deoappdir/$app/oat
         if [[ "$app" == "UPTsmService" ]] ; then
             echo "----> extract native library..."
             soarch="arm64-v8a"
@@ -304,17 +304,19 @@ extract() {
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}priv-app/$f >/dev/null || clean "$work_dir"
     done
 
-    #    cp ../weather.apk "${work_dir}/system/priv-app/Weather/Weather.apk"
+    mkdir -p deodex/system/priv-app/Weather
+    cp ../Weather.apk deodex/system/priv-app/Weather/
+    # apps="$apps Weather"
 
-    file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
-    if [[ "$file_list" == *Weather* ]]; then
-        echo "----> copying Weather..."
-        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
-        mkdir -p deodex/system/priv-app/Weather
-        cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/
-        rm -rf deodex/system/data-app/
-        apps="$apps Weather"
-    fi
+    # file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
+    # if [[ "$file_list" == *Weather* ]]; then
+    #     echo "----> copying Weather..."
+    #     $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
+    #     mkdir -p deodex/system/priv-app/Weather
+    #     cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/
+    #     rm -rf deodex/system/data-app/
+    #     apps="$apps Weather"
+    # fi
 
     for f in $priv_apps; do
         echo "----> copying $f..."
@@ -331,10 +333,16 @@ extract() {
 
     echo "--> packaging flashable zip"
     pushd deodex
-    ubin=META-INF/com/google/android/update-binary
-    mkdir -p $(dirname $ubin)
-    cp "$tool_dir/update-binary-cleaner" $ubin
-    $sed -i "s/ver=.*/ver=$model-$ver/" $ubin
+    ubin=META-INF/com/google/android
+    mkdir -p $ubin
+    cp "$tool_dir/magisk-update-binary" "$ubin/update-binary"
+    cp "$tool_dir/updater-script" "$ubin/updater-script"
+    $sed -i "s/version=.*/version=$model-$ver/" "$tool_dir/module.prop"
+    versionCode=$(grep versionCode= "$tool_dir/module.prop" | cut -d '=' -f 2)
+    versionCode=$(($versionCode+1))
+    $sed -i "s/versionCode=.*/versionCode=$versionCode/" "$tool_dir/module.prop"
+    cp "$tool_dir/module.prop" module.prop
+    cp "$tool_dir/system.prop" system.prop
     rm -f ../../eufix-$model-$ver.zip system/build.prop
     $sevenzip a -tzip ../../eufix-$model-$ver.zip . >/dev/null
 
