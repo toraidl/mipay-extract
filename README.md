@@ -1,4 +1,14 @@
 # Mi Pay Extractor
+通过提取对应中国区rom相关文件来生成magisk模块，以实现 `miui eu` 欧版部分功能的本地化:
+
+>1. mipay相关
+>2. 兰亭pro字体
+>3. 天气采用彩云源
+>4. 日历支持农历
+
+安装依赖后，将中国区的rom放至项目目录，运行 `cleaner-fix.sh` (只在 `mac os 10.15+` 上测试通过，理论上linux也没问题，windows肯定不支持)，将生成的文件 `eufix-{model}-{date}.zip`，通过magisk刷入即可
+
+# 原始项目 Readme
 Extract Mi Pay from MIUI China Rom
 
 [![Build Status](https://travis-ci.org/linusyang92/mipay-extract.svg)](https://travis-ci.org/linusyang92/mipay-extract)
@@ -16,7 +26,7 @@ Support Windows, Linux and macOS (10.10 or above). Windows version has all depen
 apt-get install -y openjdk-8-jre python2.7
 ```
 
-**Note**: 
+**Note**:
 - It is recommended to run `extract.bat` on Windows. WSL (Windows Subsystem for Linux) is **not supported** due to issues of the emulated file system in WSL. You need a real Linux VM on Windows to run `./extract.sh`.
 - To avoid line-ending issues, Windows users should **directly** [download the repo](https://github.com/linusyang92/mipay-extract/archive/master.zip) through the Github's "Clone or Download" button, instead of using a Windows version's Git command. If you clone the repo using a MinGW version's Git, the line endings may be incorrectly converted to CR/LF, which makes the generated packages invalid to use.
 
@@ -38,7 +48,7 @@ It is recommended to enable encryption if you plan to use Mi Pay. Official MIUI 
 
 If your device cannot be encrypted normally in Settings, you can completely **format `/data/` partition** and flash the additional zip file `eufix-force-fbe-oreo.zip` after flashing xiaomi.eu ROM.
 
-**Warning**: 
+**Warning**:
 
 * Do not try to flash `eufix-force-fbe-oreo.zip` when your device is **decrypted**. It will cause bootloop. Only flash it when your device has a freshly formatted `/data` partition, or already encrypted.
 * Formatting `/data` will destroy **EVERYTHING**, including all your personal data and external storage (`/sdcard`). Remember to backup before formatting.
