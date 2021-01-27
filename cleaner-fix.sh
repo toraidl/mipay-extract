@@ -321,6 +321,10 @@ extract() {
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
     done
 
+    echo "---> extract fonts"
+    $sevenzip x -odeodex/ "$img" ${imgroot}etc/fonts.xml >/dev/null || clean "$work_dir"
+    $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiLanProVF.ttf >/dev/null || clean "$work_dir"
+
     arch="arm64"
     for f in $apps; do
         deodex "$work_dir" "$f" "$arch" priv-app || clean "$work_dir"
