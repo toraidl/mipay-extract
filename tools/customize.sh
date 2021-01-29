@@ -1,3 +1,4 @@
 REPLACE="
-/system/priv-app/Weather
 "
+
+rm /data/system/package_cache/*/Weather*

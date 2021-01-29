@@ -30,10 +30,11 @@ done
 
 NO_EXTRA_FBE="yes"
 
-eufix_apps="Calendar SecurityCenter"
-private_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService"
+eufix_apps="priv-app/Calendar priv-app/SecurityCenter"
+extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService app/MiuiSuperMarket"
+# app/MiuiSuperMarket priv-app/ContentExtension
 
-[ -z "$EXTRA_PRIV" ] || private_apps="$private_apps $EXTRA_PRIV"
+[ -z "$EXTRA_PRIV" ] || extract_apps="$extract_apps $EXTRA_PRIV"
 
 base_dir=$PWD
 tool_dir=$base_dir/tools
@@ -154,7 +155,7 @@ deodex() {
     pushd "$base_dir"
     api=$(grep "ro.build.version.sdk" system/build.prop | cut -d"=" -f2)
     if [ -z "$api" ]; then
-        api=25
+        api=29
     fi
     apkdir=$deoappdir/$app
     apkfile=$apkdir/$app.apk
@@ -163,16 +164,21 @@ deodex() {
         apkfile=$apkdir/$app
     fi
     file_list="$($sevenzip l "$apkfile")"
-    if [[ "$file_list" == *"classes.dex"* && "$private_apps" == *"$app"* ]]; then
+    if [[ "$file_list" == *"classes.dex"* && "$extract_apps" == *"$app"* ]]; then
         echo "--> already deodexed $app"
         if [[ "$app" == "UPTsmService" ]] ; then
-            echo "----> extract native library..."
-            soarch="arm64-v8a"
-            if [[ "$arch" == "arm" ]]; then
-                soarch="armeabi-v7a"
+            if ! [ -d $apkdir/lib ]; then
+                $sevenzip x -o$apkdir $apkfile lib >/dev/null
+                if [ -d $apkdir/lib ]; then
+                    echo "----> extract native library..."
+                    if [[ "$arch" == "arm64" ]]; then
+                        [ -d "$apkdir/lib/arm64-v8a" ] && mv "$apkdir/lib/arm64-v8a" "$apkdir/lib/arm64"
+                    else
+                        [ -d "$apkdir/lib/armeabi-v7a" ] && mv "$apkdir/lib/armeabi-v7a" "$apkdir/lib/arm"
+                    fi
+                    rm -rf $apkdir/lib/x86*
+                fi
             fi
-            $sevenzip x -o"$apkdir" "$apkfile" "lib/$soarch" >/dev/null || return 1
-            mv "$apkdir/lib/$soarch" "$apkdir/lib/$arch"
         fi
     elif [[ "$file_list" == *"classes.dex"* ]]; then
         echo "--> decompiling $app..."
@@ -185,7 +191,7 @@ deodex() {
             }' $lunarSmali
         fi
 
-        if [[ "$app" == "Weather2" ]]; then
+        if [[ "$app" == "Weather" ]]; then
             echo "----> searching smali..."
             update_international_build_flag "$apkdir/smali/com/miui/weather2"
         fi
@@ -239,14 +245,16 @@ deodex() {
         if ! [ -d $apkdir/lib ]; then
             $sevenzip x -o$apkdir $apkfile lib >/dev/null
             if [ -d $apkdir/lib ]; then
-                pushd $apkdir/lib
-                [ -d armeabi-v7a ] && mv armeabi-v7a arm
-                [ -d arm64-v8a ] && mv arm64-v8a arm64
-                popd
+                echo "----> extract native library..."
+                if [[ "$arch" == "arm64" ]]; then
+                    [ -d "$apkdir/lib/arm64-v8a" ] && mv "$apkdir/lib/arm64-v8a" "$apkdir/lib/arm64"
+                else
+                    [ -d "$apkdir/lib/armeabi-v7a" ] && mv "$apkdir/lib/armeabi-v7a" "$apkdir/lib/arm"
+                fi
             fi
         fi
     fi
-    rm -rf $deoappdir/$app/oat
+    rm -rf $apkdir/oat
     popd
     return 0
 }
@@ -255,8 +263,8 @@ extract() {
     model=$1
     ver=$2
     file=$3
-    apps=$4
-    priv_apps=$5
+    local eufix_apps=$4
+    local extract_apps=$5
     dir=miui-$model-$ver
     img=$dir-system.img
 
@@ -299,9 +307,9 @@ extract() {
 
     echo "--> copying apps"
     $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}build.prop >/dev/null || clean "$work_dir"
-    for f in $apps; do
-        echo "----> copying $f..."
-        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}priv-app/$f >/dev/null || clean "$work_dir"
+    for f in $eufix_apps; do
+        echo "----> copying eufix $f..."
+        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
     done
 
     # cp ../Weather.apk deodex/system/app/Weather/
@@ -310,14 +318,14 @@ extract() {
     if [[ "$file_list" == *Weather* ]]; then
         echo "----> copying Weather..."
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
-        mkdir -p deodex/system/priv-app/Weather2
-        cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather2/Weather2.apk
+        mkdir -p deodex/system/priv-app/Weather
+        cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/Weather.apk
         rm -rf deodex/system/data-app/
-        apps="$apps Weather2"
+        eufix_apps="$eufix_apps priv-app/Weather"
     fi
 
-    for f in $priv_apps; do
-        echo "----> copying priv $f..."
+    for f in $extract_apps; do
+        echo "----> copying extract $f..."
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
     done
 
@@ -326,10 +334,10 @@ extract() {
     $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiLanProVF.ttf >/dev/null || clean "$work_dir"
 
     arch="arm64"
-    for f in $apps; do
-        deodex "$work_dir" "$f" "$arch" priv-app || clean "$work_dir"
+    for f in $extract_apps; do
+        deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" || clean "$work_dir"
     done
-    for f in $priv_apps; do
+    for f in $eufix_apps; do
         deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" || clean "$work_dir"
     done
 
@@ -383,7 +391,7 @@ for f in *.zip; do
     fi
     model=${arr[1]}
     ver=${arr[2]}
-    extract $model $ver $f "$eufix_apps" "$private_apps"
+    extract $model $ver $f "$eufix_apps" "$extract_apps"
     hasfile=true
 done
 
