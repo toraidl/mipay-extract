@@ -1,4 +1,4 @@
 REPLACE="
 "
 
-rm /data/system/package_cache/*
+rm -rf /data/system/package_cache/* || true
