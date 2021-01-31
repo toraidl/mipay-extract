@@ -1,4 +1,4 @@
 REPLACE="
 "
 
-rm /data/system/package_cache/*/Weather*
+rm /data/system/package_cache/*
