@@ -5,8 +5,11 @@
 >2. 兰亭pro字体
 >3. 天气采用彩云源
 >4. 日历支持农历
+>5. 闹钟支持工作日提醒
+>6. 短信本地化
+>7. 添加了应用商店
 
-安装依赖后，将中国区的rom放至项目目录，运行 `cleaner-fix.sh` (只在 `mac os 10.15+` 上测试通过，理论上linux也没问题，windows肯定不支持)，将生成的文件 `eufix-{model}-{date}.zip`，通过magisk刷入即可
+安装依赖后，将中国区的rom放至项目目录，运行 `cleaner-fix.sh` (只在 `mac os 10.15+` 上测试通过，理论上linux也没问题，windows肯定不支持)，将生成的文件 `eufix-{model}-{date}.zip`，通过magisk刷入即可。目前无已知bug，欢迎报错
 
 # 原始项目 Readme
 Extract Mi Pay from MIUI China Rom
