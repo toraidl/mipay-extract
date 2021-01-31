@@ -30,7 +30,7 @@ done
 
 NO_EXTRA_FBE="yes"
 
-eufix_apps="priv-app/Calendar priv-app/SecurityCenter app/DeskClock"
+eufix_apps="priv-app/Calendar priv-app/SecurityCenter app/DeskClock priv-app/Mms"
 extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService app/MiuiSuperMarket"
 # app/MiuiSuperMarket priv-app/ContentExtension
 
@@ -176,7 +176,7 @@ deodex() {
                     else
                         [ -d "$apkdir/lib/armeabi-v7a" ] && mv "$apkdir/lib/armeabi-v7a" "$apkdir/lib/arm"
                     fi
-                    rm -rf $apkdir/lib/x86*
+                    rm -rf $apkdir/lib/x86* || true
                 fi
             fi
         fi
@@ -194,6 +194,11 @@ deodex() {
         if [[ "$app" == "Weather" ]]; then
             echo "----> searching smali..."
             update_international_build_flag "$apkdir/smali/com/miui/weather2"
+        fi
+
+        if [[ "$app" == "Mms" ]]; then
+            echo "----> searching smali..."
+            update_international_build_flag "$apkdir/smali"
         fi
 
         if [[ "$app" == "SecurityCenter" ]]; then
@@ -258,6 +263,7 @@ deodex() {
                 else
                     [ -d "$apkdir/lib/armeabi-v7a" ] && mv "$apkdir/lib/armeabi-v7a" "$apkdir/lib/arm"
                 fi
+                rm -rf $apkdir/lib/x86* || true
             fi
         fi
     fi
@@ -323,7 +329,7 @@ extract() {
 
     file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
     if [[ "$file_list" == *Weather* ]]; then
-        echo "----> copying Weather..."
+        echo "----> copying eufix Weather..."
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
         mkdir -p deodex/system/priv-app/Weather
         cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/Weather.apk
