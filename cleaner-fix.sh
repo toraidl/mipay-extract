@@ -30,7 +30,7 @@ done
 
 NO_EXTRA_FBE="yes"
 
-eufix_apps="priv-app/Calendar priv-app/SecurityCenter"
+eufix_apps="priv-app/Calendar priv-app/SecurityCenter app/DeskClock"
 extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService app/MiuiSuperMarket"
 # app/MiuiSuperMarket priv-app/ContentExtension
 
@@ -186,7 +186,7 @@ deodex() {
         $baksmali d $apkfile -o $apkdir/smali || return 1
         if [[ "$app" == "Calendar" ]]; then
             lunarSmali=$(grep SIMPLIFIED_CHINESE -l $apkdir/smali/com/miui/calendar/util/*.smali)
-            sed -i '/0x7f0/{N;N;N;N;
+            $sed -i '/0x7f0/{N;N;N;N;
             a const/4 p0, 0x1
             }' $lunarSmali
         fi
@@ -197,12 +197,19 @@ deodex() {
         fi
 
         if [[ "$app" == "SecurityCenter" ]]; then
-            update_international_build_flag "$apkdir/smali/com/miui/antivirus/activity/SettingsActivity.smali"
+            update_international_build_flag "$apkdir/smali/com/miui/appmanager/AppManageUtils.smali"
+            update_international_build_flag "$apkdir/smali/com/miui/appmanager/AppManagerMainActivity.smali"
+            update_international_build_flag "$apkdir/smali/com/miui/appmanager/ApplicationsDetailsActivity.smali"
+            update_international_build_flag "$apkdir/smali/com/miui/cleanmaster"
+            update_international_build_flag "$apkdir/smali/com/miui/optimizecenter"
+            update_international_build_flag "$apkdir/smali/com/miui/antispam"
+            update_international_build_flag "$apkdir/smali/com/miui/powercenter"
         fi
 
         if [[ "$app" == "DeskClock" ]]; then
             echo "----> searching smali..."
-            update_international_build_flag "$apkdir/smali/com/android/deskclock/settings/SettingsActivity.smali"
+            update_international_build_flag "$apkdir/smali/com/android/deskclock/settings/SettingsFragment.smali"
+            update_international_build_flag "$apkdir/smali/com/android/deskclock/widget/NumberPicker.smali"
             update_international_build_flag "$apkdir/smali/com/android/deskclock/util/Util.smali"
         fi
 
