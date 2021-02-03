@@ -46,6 +46,8 @@ baksmali="java -Xmx${heapsize}m -jar $tool_dir/baksmali-2.2.5.jar"
 keypass="--ks-pass pass:testkey --key-pass pass:testkey"
 sign="java -Xmx${heapsize}m -jar $tool_dir/apksigner.jar sign \
       --ks $tool_dir/testkey.jks $keypass"
+libmd="libmd.txt"
+libln="libln.txt"
 aria2c_opts="--check-certificate=false --file-allocation=trunc -s10 -x10 -j10 -c"
 aria2c="aria2c $aria2c_opts"
 sed="sed"
@@ -150,6 +152,7 @@ deodex() {
     app=$2
     base_dir="$1"
     arch=$3
+    system_img=$5
     deoappdir=system/$4
     pushd "$base_dir"
     api=$(grep "ro.build.version.sdk" system/build.prop | cut -d"=" -f2)
@@ -178,6 +181,27 @@ deodex() {
                     rm -rf $apkdir/lib/x86* || true
                 fi
             fi
+        elif [ -d "$apkdir/lib/$arch" ]; then
+            echo "mkdir -p /$apkdir/lib/$arch" >> $libmd
+            for f in $apkdir/lib/$arch/*.so; do
+                if ! grep -q ELF $f; then
+                    fname=$(basename $f)
+                    orig="$(cat $f)"
+                    imgpath="${orig#*system/}"
+                    imglist="$($sevenzip l "$system_img" "${imgroot}$imgpath")"
+                    if [[ "$imglist" == *"$imgpath"* ]]; then
+                        echo "----> copy native library $fname"
+                        output_dir=$apkdir/lib/$arch/tmp
+                        $sevenzip x -o"$output_dir" "$system_img" "${imgroot}$imgpath" >/dev/null || return 1
+                        mv "$output_dir/${imgroot}$imgpath" $f
+                        rm -Rf $output_dir
+                    else
+                        echo "ln -s $orig /$apkdir/lib/$arch/$fname" >> $libln
+                        rm -f "$f"
+                    fi
+                fi
+            done
+            [ -z "$(ls -A $apkdir/lib/$arch)" ] && rm -rf "$apkdir/lib"
         fi
     elif [[ "$file_list" == *"classes.dex"* ]]; then
         echo "--> decompiling $app..."
@@ -344,13 +368,15 @@ extract() {
     echo "---> extract fonts"
     $sevenzip x -odeodex/ "$img" ${imgroot}etc/fonts.xml >/dev/null || clean "$work_dir"
     $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiLanProVF.ttf >/dev/null || clean "$work_dir"
-
+    rm -f "$work_dir"/{$libmd,$libln}
+    touch "$work_dir"/{$libmd,$libln}
     arch="arm64"
+    local system_img="$PWD/$img"
     for f in $extract_apps; do
-        deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" || clean "$work_dir"
+        deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" $system_img || clean "$work_dir"
     done
     for f in $eufix_apps; do
-        deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" || clean "$work_dir"
+        deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" $system_img || clean "$work_dir"
     done
 
     echo "--> packaging flashable zip"
@@ -366,7 +392,7 @@ extract() {
     $sed -i "s/version=.*/version=$model-$ver/" module.prop
     cp "$tool_dir/system.prop" system.prop
     cp "$tool_dir/customize.sh" customize.sh
-    rm -f ../../eufix-$model-$ver.zip system/build.prop
+    rm -f ../../eufix-$model-$ver.zip $libmd $libln system/build.prop
     $sevenzip a -tzip ../../eufix-$model-$ver.zip . >/dev/null
 
     if [ -z "$NO_EXTRA_FBE" ]; then
