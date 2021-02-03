@@ -5,6 +5,7 @@
 /miui*-*/
 *.pyc
 *.aria2
+.vscode/
 /tools/win32/
 compare/
 /tools/miuimon/miuimon

@@ -1,6 +1,6 @@
 id=eufix_monwf
-name=miui eu rom patch by monwf
-version=APOLLO-21.1.28
-versionCode=4
+name=miui eu rom patch by MonwF@github
+version=APOLLO-21.2.1
+versionCode=7
 author=MonwF
 description=Add mipay and lunar support for Calendar

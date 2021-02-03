@@ -30,7 +30,7 @@ done
 
 NO_EXTRA_FBE="yes"
 
-eufix_apps="priv-app/Calendar priv-app/SecurityCenter app/DeskClock priv-app/Mms"
+eufix_apps="priv-app/Calendar priv-app/SecurityCenter priv-app/Mms app/DeskClock"
 extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService app/MiuiSuperMarket"
 # app/MiuiSuperMarket priv-app/ContentExtension
 
@@ -151,7 +151,6 @@ deodex() {
     base_dir="$1"
     arch=$3
     deoappdir=system/$4
-    framedir=system/framework
     pushd "$base_dir"
     api=$(grep "ro.build.version.sdk" system/build.prop | cut -d"=" -f2)
     if [ -z "$api" ]; then
@@ -360,11 +359,11 @@ extract() {
     mkdir -p $ubin
     cp "$tool_dir/magisk-update-binary" "$ubin/update-binary"
     cp "$tool_dir/updater-script" "$ubin/updater-script"
-    $sed -i "s/version=.*/version=$model-$ver/" "$tool_dir/module.prop"
     versionCode=$(grep versionCode= "$tool_dir/module.prop" | cut -d '=' -f 2)
     versionCode=$(($versionCode+1))
     $sed -i "s/versionCode=.*/versionCode=$versionCode/" "$tool_dir/module.prop"
     cp "$tool_dir/module.prop" module.prop
+    $sed -i "s/version=.*/version=$model-$ver/" module.prop
     cp "$tool_dir/system.prop" system.prop
     cp "$tool_dir/customize.sh" customize.sh
     rm -f ../../eufix-$model-$ver.zip system/build.prop
