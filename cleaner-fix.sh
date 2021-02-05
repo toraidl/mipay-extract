@@ -2,23 +2,36 @@
 
 cd "$(dirname "$0")"
 
+if [[ -z "$*" ]]; then
+    ENABLE_FONTS=true
+    ENABLE_MIPAY=true
+    ENABLE_EUFIX=true
+    ENABLE_AIO=true
+fi
+
 darr=()
 while [[ $# -gt 0 ]]; do
 key="$1"
 
 case $key in
     --trafficfix)
-    EXTRA_PRIV="framework/services.jar $EXTRA_PRIV"
+    EXTRA_PRIV="framework/services.jar"
     echo "--> Increase threshold (50M) to prevent high cpu of traffic monitoring"
     shift
     ;;
-    --clock)
-    EXTRA_PRIV="app/DeskClock $EXTRA_PRIV"
-    echo "--> Modify Clock to support work day alarms"
+    --fonts)
+    ENABLE_FONTS=true
+    echo "--> enable chinese fonts"
     shift
     ;;
-    --nofbe)
-    NO_EXTRA_FBE="yes"
+    --mipay)
+    ENABLE_MIPAY=true
+    echo "--> enable mipay"
+    shift
+    ;;
+    --eufix)
+    ENABLE_EUFIX=true
+    echo "--> enable Weather、DeskClock、Calendar、Mms、SecurityCenter localizition"
     shift
     ;;
     *)
@@ -28,13 +41,11 @@ case $key in
 esac
 done
 
-NO_EXTRA_FBE="yes"
-
 eufix_apps="priv-app/Calendar priv-app/SecurityCenter priv-app/Mms app/DeskClock"
-extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService app/MiuiSuperMarket"
+extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService"
 # app/MiuiSuperMarket priv-app/ContentExtension
 
-[ -z "$EXTRA_PRIV" ] || extract_apps="$extract_apps $EXTRA_PRIV"
+[ -z "$EXTRA_PRIV" ] || eufix_apps="$eufix_apps $EXTRA_PRIV"
 
 base_dir=$PWD
 tool_dir=$base_dir/tools
@@ -155,10 +166,7 @@ deodex() {
     system_img=$5
     deoappdir=system/$4
     pushd "$base_dir"
-    api=$(grep "ro.build.version.sdk" system/build.prop | cut -d"=" -f2)
-    if [ -z "$api" ]; then
-        api=29
-    fi
+    api=29
     apkdir=$deoappdir/$app
     apkfile=$apkdir/$app.apk
     if [[ "$app" == *".jar" ]]; then
@@ -341,43 +349,52 @@ extract() {
         imgexroot=""
     fi
 
-    echo "--> copying apps"
-    $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}build.prop >/dev/null || clean "$work_dir"
-    for f in $eufix_apps; do
-        echo "----> copying eufix $f..."
-        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
-    done
-
-    # cp ../Weather.apk deodex/system/app/Weather/
-
-    file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
-    if [[ "$file_list" == *Weather* ]]; then
-        echo "----> copying eufix Weather..."
-        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
-        mkdir -p deodex/system/priv-app/Weather
-        cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/Weather.apk
-        rm -rf deodex/system/data-app/
-        eufix_apps="$eufix_apps priv-app/Weather"
-    fi
-
-    for f in $extract_apps; do
-        echo "----> copying extract $f..."
-        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
-    done
-
-    echo "---> extract fonts"
-    $sevenzip x -odeodex/ "$img" ${imgroot}etc/fonts.xml >/dev/null || clean "$work_dir"
-    $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiLanProVF.ttf >/dev/null || clean "$work_dir"
     rm -f "$work_dir"/{$libmd,$libln}
     touch "$work_dir"/{$libmd,$libln}
+
+    if [ "$ENABLE_EUFIX" = true ]; then
+        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}build.prop >/dev/null || clean "$work_dir"
+        for f in $eufix_apps; do
+            echo "----> copying eufix $f..."
+            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
+        done
+
+        file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
+        if [[ "$file_list" == *Weather* ]]; then
+            echo "----> copying eufix Weather..."
+            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
+            mkdir -p deodex/system/priv-app/Weather
+            cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/Weather.apk
+            rm -rf deodex/system/data-app/
+            eufix_apps="$eufix_apps priv-app/Weather"
+        fi
+    fi
+
+    if [ "$ENABLE_MIPAY" = true ]; then
+        for f in $extract_apps; do
+            echo "----> copying extract $f..."
+            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
+        done
+    fi
+
+    if [ "$ENABLE_FONTS" = true ]; then
+        echo "---> extract fonts"
+        $sevenzip x -odeodex/ "$img" ${imgroot}etc/fonts.xml >/dev/null || clean "$work_dir"
+        $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiLanProVF.ttf >/dev/null || clean "$work_dir"
+    fi
+
     arch="arm64"
     local system_img="$PWD/$img"
-    for f in $extract_apps; do
-        deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" $system_img || clean "$work_dir"
-    done
-    for f in $eufix_apps; do
-        deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" $system_img || clean "$work_dir"
-    done
+    if [ "$ENABLE_MIPAY" = true ]; then
+        for f in $extract_apps; do
+            deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" $system_img || clean "$work_dir"
+        done
+    fi
+    if [ "$ENABLE_EUFIX" = true ]; then
+        for f in $eufix_apps; do
+            deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" $system_img || clean "$work_dir"
+        done
+    fi
 
     echo "--> packaging flashable zip"
     pushd deodex
@@ -389,17 +406,28 @@ extract() {
     versionCode=$(($versionCode+1))
     $sed -i "s/versionCode=.*/versionCode=$versionCode/" "$tool_dir/module.prop"
     cp "$tool_dir/module.prop" module.prop
-    $sed -i "s/version=.*/version=$model-$ver/" module.prop
-    cp "$tool_dir/system.prop" system.prop
     cp "$tool_dir/customize.sh" customize.sh
-    rm -f ../../eufix-$model-$ver.zip $libmd $libln system/build.prop
-    $sevenzip a -tzip ../../eufix-$model-$ver.zip . >/dev/null
-
-    if [ -z "$NO_EXTRA_FBE" ]; then
-        cp "$tool_dir/update-binary-fbe" $ubin
-        rm -f eufix-force-fbe-oreo.zip
-        $sevenzip a -tzip -x!system ../../eufix-force-fbe-oreo.zip . >/dev/null
+    moduleId=eufix
+    moduleName=aio
+    if [ "$ENABLE_AIO" = true ]; then
+        cp "$tool_dir/system.prop" system.prop
+    elif [ "$ENABLE_FONTS" = true ]; then
+        moduleId=eufix_fonts
+        moduleName=fonts
+    elif [ "$ENABLE_MIPAY" = true ]; then
+        moduleId=eufix_mipay
+        moduleName=mipay
+        cp "$tool_dir/system.prop" system.prop
+    elif [ "$ENABLE_EUFIX" = true ]; then
+        moduleId=eufix_l10n
+        moduleName=l10n
     fi
+    ENABLE_AIO=true
+    $sed -i "s/version=.*/version=$model-$ver/" module.prop
+    $sed -i "s/id=.*/id=$moduleId-MonwF/" module.prop
+    $sed -i "s/name=.*/name=miui eu rom $moduleName patch by MonwF@github/" module.prop
+    rm -f ../../$moduleId-$model-$ver.zip $libmd $libln system/build.prop
+    $sevenzip a -tzip ../../$moduleId-$model-$ver.zip . >/dev/null
 
     trap - INT
     popd
