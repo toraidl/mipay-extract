@@ -107,7 +107,7 @@ else
 fi
 
 clean() {
-    [ -e "$1" ] && rm -R "$1"
+    [ -e "$1" ] && rm -Rf "$1"
     echo "--> abort"
     echo "--> clean $(basename $1)"
     exit 1
@@ -240,6 +240,7 @@ deodex() {
             update_international_build_flag "$apkdir/smali/com/miui/optimizecenter"
             update_international_build_flag "$apkdir/smali/com/miui/antispam"
             update_international_build_flag "$apkdir/smali/com/miui/powercenter"
+            update_international_build_flag "$apkdir/smali/com/miui/networkassistant/utils/DeviceUtil.smali"
         fi
 
         if [[ "$app" == "DeskClock" ]]; then

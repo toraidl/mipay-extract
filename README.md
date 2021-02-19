@@ -7,6 +7,7 @@
 >4. 日历支持农历
 >5. 闹钟支持工作日提醒
 >6. 短信本地化
+>7. 支持更新系统app
 
 安装依赖后，将中国区的rom放至项目目录，运行 `./cleaner-fix.sh` (只在 `mac os 10.15+` 上测试通过，理论上linux也没问题，windows肯定不支持)，将生成的文件 `eufix-{model}-{date}.zip`，通过magisk刷入即可。
 
