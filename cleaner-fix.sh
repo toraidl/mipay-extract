@@ -41,7 +41,7 @@ case $key in
 esac
 done
 
-eufix_apps="priv-app/SecurityCenter app/miuisystem priv-app/Calendar"
+eufix_apps="priv-app/SecurityCenter app/miuisystem"
 eufix_extract_apps="priv-app/Mms priv-app/YellowPage"
 extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService"
 # app/MiuiSuperMarket priv-app/ContentExtension
@@ -220,13 +220,6 @@ deodex() {
         echo "--> decompiling $app..."
         dexclass="classes.dex"
         $baksmali d $apkfile -o $apkdir/smali || return 1
-
-        if [[ "$app" == "Calendar" ]]; then
-            lunarSmali=$(grep SIMPLIFIED_CHINESE -l $apkdir/smali/com/miui/calendar/util/*.smali)
-            $sed -i '/0x7f0/{N;N;N;N;
-            a const/4 p0, 0x1
-            }' $lunarSmali
-        fi
 
         if [[ "$app" == "SecurityCenter" ]]; then
             update_international_build_flag "$apkdir/smali/com/miui/appmanager/AppManageUtils.smali"
