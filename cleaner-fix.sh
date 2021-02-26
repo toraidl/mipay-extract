@@ -52,8 +52,8 @@ tool_dir=$base_dir/tools
 sdat2img="python2.7 $tool_dir/sdat2img.py"
 patchmethod="python2.7 $tool_dir/patchmethod.py"
 heapsize=1024
-smali="java -Xmx${heapsize}m -jar $tool_dir/smali-2.2.5.jar"
-baksmali="java -Xmx${heapsize}m -jar $tool_dir/baksmali-2.2.5.jar"
+smali="java -Xmx${heapsize}m -jar $tool_dir/smali-2.4.0.jar"
+baksmali="java -Xmx${heapsize}m -jar $tool_dir/baksmali-2.4.0.jar"
 keypass="--ks-pass pass:testkey --key-pass pass:testkey"
 sign="java -Xmx${heapsize}m -jar $tool_dir/apksigner.jar sign \
       --ks $tool_dir/testkey.jks $keypass"
@@ -223,12 +223,10 @@ deodex() {
         fi
 
         if [[ "$app" == "Weather" ]]; then
-            echo "----> searching smali..."
             update_international_build_flag "$apkdir/smali/com/miui/weather2"
         fi
 
         if [[ "$app" == "Mms" ]]; then
-            echo "----> searching smali..."
             update_international_build_flag "$apkdir/smali"
         fi
 
@@ -244,10 +242,21 @@ deodex() {
         fi
 
         if [[ "$app" == "DeskClock" ]]; then
-            echo "----> searching smali..."
             update_international_build_flag "$apkdir/smali/com/android/deskclock/settings/SettingsFragment.smali"
             update_international_build_flag "$apkdir/smali/com/android/deskclock/widget/NumberPicker.smali"
             update_international_build_flag "$apkdir/smali/com/android/deskclock/util/Util.smali"
+        fi
+
+        if [[ "$app" == "YellowPage" ]]; then
+            update_international_build_flag "$apkdir/smali/com/miui/yellowpage"
+        fi
+
+        if [[ "$app" == "Contacts" ]]; then
+            update_international_build_flag "$apkdir/smali/com/android/contacts"
+        fi
+
+        if [[ "$app" == "miuisystem" ]]; then
+            update_international_build_flag "$apkdir/smali/miui/yellowpage"
         fi
 
         if [[ "$app" == "services.jar" ]]; then

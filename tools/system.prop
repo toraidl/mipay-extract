@@ -5,4 +5,5 @@ ro.miui.cust_variant=cn
 ro.product.locale=zh-CN
 ro.product.locale.language=zh
 ro.product.locale.region=CN
+persist.sys.timezone=Asia/Shanghai
 persist.sys.allow_sys_app_update=true
