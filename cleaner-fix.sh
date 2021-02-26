@@ -41,7 +41,8 @@ case $key in
 esac
 done
 
-eufix_apps="priv-app/Calendar priv-app/SecurityCenter priv-app/Mms app/DeskClock"
+eufix_apps="priv-app/SecurityCenter app/miuisystem priv-app/Calendar"
+eufix_extract_apps="priv-app/Mms priv-app/YellowPage"
 extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService"
 # app/MiuiSuperMarket priv-app/ContentExtension
 
@@ -174,7 +175,11 @@ deodex() {
         apkfile=$apkdir/$app
     fi
     file_list="$($sevenzip l "$apkfile")"
-    if [[ "$file_list" == *"classes.dex"* && "$extract_apps" == *"$app"* ]]; then
+    final_extract_apps=$extract_apps
+    if [ "$ENABLE_EUFIX" = true ] ; then
+        final_extract_apps="$eufix_extract_apps $final_extract_apps"
+    fi
+    if [[ "$file_list" == *"classes.dex"* && "$final_extract_apps" == *"$app"* ]]; then
         echo "--> already deodexed $app"
         if [[ "$app" == "UPTsmService" ]] ; then
             if ! [ -d $apkdir/lib ]; then
@@ -215,19 +220,12 @@ deodex() {
         echo "--> decompiling $app..."
         dexclass="classes.dex"
         $baksmali d $apkfile -o $apkdir/smali || return 1
+
         if [[ "$app" == "Calendar" ]]; then
             lunarSmali=$(grep SIMPLIFIED_CHINESE -l $apkdir/smali/com/miui/calendar/util/*.smali)
             $sed -i '/0x7f0/{N;N;N;N;
             a const/4 p0, 0x1
             }' $lunarSmali
-        fi
-
-        if [[ "$app" == "Weather" ]]; then
-            update_international_build_flag "$apkdir/smali/com/miui/weather2"
-        fi
-
-        if [[ "$app" == "Mms" ]]; then
-            update_international_build_flag "$apkdir/smali"
         fi
 
         if [[ "$app" == "SecurityCenter" ]]; then
@@ -239,20 +237,6 @@ deodex() {
             update_international_build_flag "$apkdir/smali/com/miui/antispam"
             update_international_build_flag "$apkdir/smali/com/miui/powercenter"
             update_international_build_flag "$apkdir/smali/com/miui/networkassistant/utils/DeviceUtil.smali"
-        fi
-
-        if [[ "$app" == "DeskClock" ]]; then
-            update_international_build_flag "$apkdir/smali/com/android/deskclock/settings/SettingsFragment.smali"
-            update_international_build_flag "$apkdir/smali/com/android/deskclock/widget/NumberPicker.smali"
-            update_international_build_flag "$apkdir/smali/com/android/deskclock/util/Util.smali"
-        fi
-
-        if [[ "$app" == "YellowPage" ]]; then
-            update_international_build_flag "$apkdir/smali/com/miui/yellowpage"
-        fi
-
-        if [[ "$app" == "Contacts" ]]; then
-            update_international_build_flag "$apkdir/smali/com/android/contacts"
         fi
 
         if [[ "$app" == "miuisystem" ]]; then
@@ -364,6 +348,7 @@ extract() {
 
     if [ "$ENABLE_EUFIX" = true ]; then
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}build.prop >/dev/null || clean "$work_dir"
+        eufix_apps="$eufix_apps $eufix_extract_apps"
         for f in $eufix_apps; do
             echo "----> copying eufix $f..."
             $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
@@ -373,10 +358,12 @@ extract() {
         if [[ "$file_list" == *Weather* ]]; then
             echo "----> copying eufix Weather..."
             $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
+            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}etc/yellowpage >/dev/null || clean "$work_dir"
             mkdir -p deodex/system/priv-app/Weather
             cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/Weather.apk
             rm -rf deodex/system/data-app/
             eufix_apps="$eufix_apps priv-app/Weather"
+            eufix_extract_apps="$eufix_extract_apps priv-app/Weather"
         fi
     fi
 
