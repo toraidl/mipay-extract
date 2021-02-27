@@ -176,20 +176,7 @@ deodex() {
     file_list="$($sevenzip l "$apkfile")"
     if [[ "$file_list" == *"classes.dex"* && "$extract_apps" == *"$app"* ]]; then
         echo "--> already deodexed $app"
-        if [[ "$app" == "UPTsmService" ]] ; then
-            if ! [ -d $apkdir/lib ]; then
-                $sevenzip x -o$apkdir $apkfile lib >/dev/null
-                if [ -d $apkdir/lib ]; then
-                    echo "----> extract native library..."
-                    if [[ "$arch" == "arm64" ]]; then
-                        [ -d "$apkdir/lib/arm64-v8a" ] && mv "$apkdir/lib/arm64-v8a" "$apkdir/lib/arm64"
-                    else
-                        [ -d "$apkdir/lib/armeabi-v7a" ] && mv "$apkdir/lib/armeabi-v7a" "$apkdir/lib/arm"
-                    fi
-                    rm -rf $apkdir/lib/x86* || true
-                fi
-            fi
-        elif [ -d "$apkdir/lib/$arch" ]; then
+        if [[ "$app" != "UPTsmService" && -d "$apkdir/lib/$arch" ]]; then
             echo "mkdir -p /$apkdir/lib/$arch" >> $libmd
             for f in $apkdir/lib/$arch/*.so; do
                 if ! grep -q ELF $f; then
@@ -419,23 +406,28 @@ extract() {
     cp "$tool_dir/customize.sh" customize.sh
     moduleId=eufix
     moduleName=aio
+    moduleDesc="miui eu 欧版本地化模块，添加兰亭pro字体、钱包、门禁、日历显示农历、天气源修改、闹钟支持工作日等"
     if [ "$ENABLE_AIO" = true ]; then
         cp "$tool_dir/system.prop" system.prop
     elif [ "$ENABLE_FONTS" = true ]; then
         moduleId=eufix_fonts
         moduleName=fonts
+        moduleDesc="miui eu 欧版使用兰亭pro字体"
     elif [ "$ENABLE_MIPAY" = true ]; then
         moduleId=eufix_mipay
         moduleName=mipay
+        moduleDesc="miui eu 欧版添加钱包、门禁、允许更新系统应用等功能"
         cp "$tool_dir/system.prop" system.prop
     elif [ "$ENABLE_EUFIX" = true ]; then
         moduleId=eufix_l10n
         moduleName=l10n
+        moduleDesc="miui eu 欧版添加日历显示农历、天气源修改、闹钟支持工作日等功能"
     fi
     ENABLE_AIO=true
     $sed -i "s/version=.*/version=$model-$ver/" module.prop
     $sed -i "s/id=.*/id=$moduleId-MonwF/" module.prop
     $sed -i "s/name=.*/name=miui eu rom $moduleName patch by MonwF@github/" module.prop
+    $sed -i "s/description=.*/description=$moduleDesc/" module.prop
     rm -f ../../$moduleId-$model-$ver.zip $libmd $libln system/build.prop
     $sevenzip a -tzip ../../$moduleId-$model-$ver.zip . >/dev/null
 
