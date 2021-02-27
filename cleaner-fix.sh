@@ -325,6 +325,7 @@ extract() {
                 $sevenzip x ../$file "payload.bin" || clean payload.bin
                 payload_dumper payload.bin
                 mv output/system.img $img
+                rm -rf output payload.bin
             else
                 $sevenzip x ../$file "system.new.dat" "system.transfer.list" \
                 || clean system.new.dat
