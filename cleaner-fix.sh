@@ -51,6 +51,7 @@ base_dir=$PWD
 tool_dir=$base_dir/tools
 sdat2img="python2.7 $tool_dir/sdat2img.py"
 patchmethod="python2.7 $tool_dir/patchmethod.py"
+payload_dumper="python3 $tool_dir/payload_dumper.py"
 heapsize=1024
 smali="java -Xmx${heapsize}m -jar $tool_dir/smali-2.4.0.jar"
 baksmali="java -Xmx${heapsize}m -jar $tool_dir/baksmali-2.4.0.jar"
@@ -320,6 +321,10 @@ extract() {
                 $sevenzip x ../$file "system.new.dat.br" "system.transfer.list" \
                 || clean system.new.dat.br
                 $brotli -d system.new.dat.br && rm -f system.new.dat.br
+            elif [[ "$filelist" == *payload.bin* ]]; then
+                $sevenzip x ../$file "payload.bin" || clean payload.bin
+                payload_dumper payload.bin
+                mv output/system.img $img
             else
                 $sevenzip x ../$file "system.new.dat" "system.transfer.list" \
                 || clean system.new.dat
