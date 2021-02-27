@@ -42,7 +42,7 @@ esac
 done
 
 eufix_apps="priv-app/SecurityCenter app/miuisystem"
-eufix_extract_apps="priv-app/Mms priv-app/YellowPage"
+eufix_extract_apps="priv-app/YellowPage"
 extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService"
 # app/MiuiSuperMarket priv-app/ContentExtension
 
