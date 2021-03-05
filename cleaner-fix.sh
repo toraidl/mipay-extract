@@ -41,7 +41,7 @@ case $key in
 esac
 done
 
-eufix_apps="priv-app/SecurityCenter app/miuisystem"
+eufix_apps=""
 eufix_extract_apps="priv-app/YellowPage"
 extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService"
 # app/MiuiSuperMarket priv-app/ContentExtension
@@ -207,21 +207,6 @@ deodex() {
         echo "--> decompiling $app..."
         dexclass="classes.dex"
         $baksmali d $apkfile -o $apkdir/smali || return 1
-
-        if [[ "$app" == "SecurityCenter" ]]; then
-            update_international_build_flag "$apkdir/smali/com/miui/appmanager/AppManageUtils.smali"
-            update_international_build_flag "$apkdir/smali/com/miui/appmanager/AppManagerMainActivity.smali"
-            update_international_build_flag "$apkdir/smali/com/miui/appmanager/ApplicationsDetailsActivity.smali"
-            update_international_build_flag "$apkdir/smali/com/miui/cleanmaster"
-            update_international_build_flag "$apkdir/smali/com/miui/optimizecenter"
-            update_international_build_flag "$apkdir/smali/com/miui/antispam"
-            update_international_build_flag "$apkdir/smali/com/miui/powercenter"
-            update_international_build_flag "$apkdir/smali/com/miui/networkassistant/utils/DeviceUtil.smali"
-        fi
-
-        if [[ "$app" == "miuisystem" ]]; then
-            update_international_build_flag "$apkdir/smali/miui/yellowpage"
-        fi
 
         if [[ "$app" == "services.jar" ]]; then
             i="$apkdir/smali/com/android/server/net/NetworkStatsService.smali"
