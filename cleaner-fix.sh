@@ -41,9 +41,9 @@ case $key in
 esac
 done
 
-eufix_apps="priv-app/SecurityCenter app/miuisystem"
-eufix_extract_apps="priv-app/YellowPage"
-extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService"
+eufix_apps="app/miuisystem"
+eufix_extract_apps=""
+extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService priv-app/YellowPage"
 # app/MiuiSuperMarket priv-app/ContentExtension
 
 [ -z "$EXTRA_PRIV" ] || eufix_apps="$eufix_apps $EXTRA_PRIV"
@@ -175,11 +175,7 @@ deodex() {
         apkfile=$apkdir/$app
     fi
     file_list="$($sevenzip l "$apkfile")"
-    final_extract_apps=$extract_apps
-    if [ "$ENABLE_EUFIX" = true ] ; then
-        final_extract_apps="$eufix_extract_apps $final_extract_apps"
-    fi
-    if [[ "$file_list" == *"classes.dex"* && "$final_extract_apps" == *"$app"* ]]; then
+    if [[ "$file_list" == *"classes.dex"* && "$extract_apps" == *"$app"* ]]; then
         echo "--> already deodexed $app"
         if [[ "$app" != "UPTsmService" && -d "$apkdir/lib/$arch" ]]; then
             echo "mkdir -p /$apkdir/lib/$arch" >> $libmd
@@ -328,23 +324,10 @@ extract() {
 
     if [ "$ENABLE_EUFIX" = true ]; then
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}build.prop >/dev/null || clean "$work_dir"
-        eufix_apps="$eufix_apps $eufix_extract_apps"
         for f in $eufix_apps; do
             echo "----> copying eufix $f..."
             $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
         done
-
-        file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
-        if [[ "$file_list" == *Weather* ]]; then
-            echo "----> copying eufix Weather..."
-            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
-            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}etc/yellowpage >/dev/null || clean "$work_dir"
-            mkdir -p deodex/system/priv-app/Weather
-            cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/Weather.apk
-            rm -rf deodex/system/data-app/
-            eufix_apps="$eufix_apps priv-app/Weather"
-            eufix_extract_apps="$eufix_extract_apps priv-app/Weather"
-        fi
     fi
 
     if [ "$ENABLE_MIPAY" = true ]; then
@@ -352,6 +335,17 @@ extract() {
             echo "----> copying extract $f..."
             $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
         done
+        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}etc/yellowpage >/dev/null || clean "$work_dir"
+
+        file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
+        if [[ "$file_list" == *Weather* ]]; then
+            echo "----> copying chinese Weather..."
+            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
+            mkdir -p deodex/system/priv-app/Weather
+            cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/Weather.apk
+            rm -rf deodex/system/data-app/
+            extract_apps="$extract_apps priv-app/Weather"
+        fi
     fi
 
     if [ "$ENABLE_FONTS" = true ]; then
