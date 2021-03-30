@@ -320,6 +320,7 @@ extract() {
             $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
         done
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}etc/yellowpage >/dev/null || clean "$work_dir"
+        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}cust >/dev/null || clean "$work_dir"
 
         file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
         if [[ "$file_list" == *Weather* ]]; then
