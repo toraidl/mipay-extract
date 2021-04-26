@@ -1,5 +1,5 @@
 # Mi Pay Extractor
-通过提取对应中国区rom相关文件来生成magisk模块，以实现 `miui eu` 欧版部分功能的本地化:
+通过提取对应中国区rom相关文件来生成magisk模块，以实现 `miui eu` 欧版部分功能的本地化，须配合[xposed模块](https://github.com/monwf/miuieu-l10n)
 
 >1. mipay相关
 >2. 兰亭pro字体
@@ -9,12 +9,9 @@
 >6. 短信本地化
 >7. 支持更新系统app
 
-安装依赖后，将中国区的rom放至项目目录，运行 `./cleaner-fix.sh` (只在 `mac os 10.15+` 上测试通过，理论上linux也没问题，windows肯定不支持)，将生成的文件 `eufix-{model}-{date}.zip`，通过magisk刷入即可。
+安装依赖后，将中国区的rom放至项目目录，运行 `./cleaner-fix.sh --mipay` (只在 `mac os 10.15+` 上测试通过，理论上linux也没问题，windows肯定不支持)，将生成的文件 `eufix-{model}-{date}.zip`，通过magisk刷入即可。
 
-**另外，可添加对应参数，生成单独的包**，如 `./cleaner-fix.sh --fonts` 只应用字体。具体支持如下:
-> `--mipay` 钱包、公交卡、门卡相关
-> `--eufix` 本地化（日历、闹钟、天气、短信）
-> `--fonts` 兰亭pro字体
+兰亭Pro字体对应的magisk包可前往下载: [lanzous](https://tpsx.lanzous.com/b01zwocid) 密码: hfne
 
 目前无已知bug，欢迎报错
 
