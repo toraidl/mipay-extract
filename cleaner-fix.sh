@@ -323,7 +323,7 @@ extract() {
                 $brotli -d system.new.dat.br && rm -f system.new.dat.br
             elif [[ "$filelist" == *payload.bin* ]]; then
                 $sevenzip x ../$file "payload.bin" || clean payload.bin
-                payload_dumper payload.bin
+                $payload_dumper payload.bin
                 mv output/system.img $img
                 rm -rf output payload.bin
             else
