@@ -336,6 +336,7 @@ extract() {
     if [ "$ENABLE_FONTS" = true ]; then
         echo "---> extract fonts"
         $sevenzip x -odeodex/ "$img" ${imgroot}etc/fonts.xml >/dev/null || clean "$work_dir"
+        $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiSansVF.ttf >/dev/null || clean "$work_dir"
         $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiLanProVF.ttf >/dev/null || clean "$work_dir"
     fi
 
