@@ -337,7 +337,6 @@ extract() {
         echo "---> extract fonts"
         $sevenzip x -odeodex/ "$img" ${imgroot}etc/fonts.xml >/dev/null || clean "$work_dir"
         $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiSansVF.ttf >/dev/null || clean "$work_dir"
-        $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiLanProVF.ttf >/dev/null || clean "$work_dir"
     fi
 
     arch="arm64"
@@ -373,6 +372,7 @@ extract() {
         moduleId=eufix_fonts
         moduleName=fonts
         moduleDesc="miui eu 欧版使用兰亭pro字体"
+        cp "$tool_dir/customize-fonts.sh" customize.sh
     elif [ "$ENABLE_MIPAY" = true ]; then
         moduleId=eufix_mipay
         moduleName=mipay
