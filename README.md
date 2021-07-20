@@ -11,9 +11,9 @@
 
 安装依赖后，将中国区的rom放至项目目录，运行 `./cleaner-fix.sh --mipay` (只在 `mac os 10.15+` 上测试通过，理论上linux也没问题，windows肯定不支持)，将生成的文件 `eufix-{model}-{date}.zip`，通过magisk刷入即可。
 
-兰亭Pro字体对应的magisk包可前往下载: [lanzous](https://tpsx.lanzous.com/b01zwocid) 密码: hfne
+兰亭Pro字体对应的magisk包可前往下载: [lanzous](https://tpsx.lanzoui.com/b01zwocid) 密码: hfne
 
-目前无已知bug，欢迎报错
+如需更完整的本地化，可使用[MinaMichita的方案](https://blog.minamigo.moe/archives/184)
 
 # 原始项目 Readme
 Extract Mi Pay from MIUI China Rom
