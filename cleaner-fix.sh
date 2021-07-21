@@ -5,8 +5,6 @@ cd "$(dirname "$0")"
 if [[ -z "$*" ]]; then
     ENABLE_FONTS=false
     ENABLE_MIPAY=true
-    ENABLE_EUFIX=true
-    ENABLE_AIO=true
 fi
 
 darr=()
@@ -14,11 +12,6 @@ while [[ $# -gt 0 ]]; do
 key="$1"
 
 case $key in
-    --trafficfix)
-    EXTRA_PRIV="framework/services.jar"
-    echo "--> Increase threshold (50M) to prevent high cpu of traffic monitoring"
-    shift
-    ;;
     --fonts)
     ENABLE_FONTS=true
     echo "--> enable chinese fonts"
@@ -29,11 +22,6 @@ case $key in
     echo "--> enable mipay"
     shift
     ;;
-    --eufix)
-    ENABLE_EUFIX=true
-    echo "--> enable Weather、DeskClock、Calendar、Mms、SecurityCenter localizition"
-    shift
-    ;;
     *)
     darr+=("$1")
     shift
@@ -41,11 +29,8 @@ case $key in
 esac
 done
 
-eufix_apps=""
-extract_apps="app/Mipay app/NextPay app/TSMClient app/UPTsmService priv-app/YellowPage"
+extract_apps="app/MIpay app/NextPay app/TSMClient app/UPTsmService priv-app/YellowPage"
 # app/MiuiSuperMarket priv-app/ContentExtension
-
-[ -z "$EXTRA_PRIV" ] || eufix_apps="$eufix_apps $EXTRA_PRIV"
 
 base_dir=$PWD
 tool_dir=$base_dir/tools
@@ -166,13 +151,8 @@ deodex() {
     system_img=$5
     deoappdir=system/$4
     pushd "$base_dir"
-    api=29
     apkdir=$deoappdir/$app
     apkfile=$apkdir/$app.apk
-    if [[ "$app" == *".jar" ]]; then
-        apkdir=$deoappdir
-        apkfile=$apkdir/$app
-    fi
     file_list="$($sevenzip l "$apkfile")"
     if [[ "$file_list" == *"classes.dex"* && "$extract_apps" == *"$app"* ]]; then
         echo "--> already deodexed $app"
@@ -214,6 +194,7 @@ deodex() {
             fi
         fi
 
+        api=30
         $smali assemble -a $api $apkdir/smali -o $apkdir/$dexclass || return 1
         rm -rf $apkdir/smali
         if [[ ! -f $apkdir/$dexclass ]]; then
@@ -261,7 +242,6 @@ extract() {
     model=$1
     ver=$2
     file=$3
-    local eufix_apps=$4
     local extract_apps=$5
     dir=miui-$model-$ver
     img=$dir-system.img
@@ -306,14 +286,6 @@ extract() {
     rm -f "$work_dir"/{$libmd,$libln}
     touch "$work_dir"/{$libmd,$libln}
 
-    if [ "$ENABLE_EUFIX" = true ]; then
-        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}build.prop >/dev/null || clean "$work_dir"
-        for f in $eufix_apps; do
-            echo "----> copying eufix $f..."
-            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
-        done
-    fi
-
     if [ "$ENABLE_MIPAY" = true ]; then
         for f in $extract_apps; do
             echo "----> copying extract $f..."
@@ -322,14 +294,14 @@ extract() {
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}etc/yellowpage >/dev/null || clean "$work_dir"
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}cust >/dev/null || clean "$work_dir"
 
-        file_list="$($sevenzip l "$img" ${imgroot}data-app/Weather)"
+        file_list="$($sevenzip l "$img" ${imgroot}data-app/MIUIWeather)"
         if [[ "$file_list" == *Weather* ]]; then
             echo "----> copying chinese Weather..."
-            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/Weather >/dev/null || clean "$work_dir"
-            mkdir -p deodex/system/priv-app/Weather
-            cp deodex/system/data-app/Weather/Weather.apk deodex/system/priv-app/Weather/Weather.apk
+            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/MIUIWeather >/dev/null || clean "$work_dir"
+            mkdir -p deodex/system/priv-app/MIUIWeather
+            cp deodex/system/data-app/MIUIWeather/MIUIWeather.apk deodex/system/priv-app/MIUIWeather/MIUIWeather.apk
             rm -rf deodex/system/data-app/
-            extract_apps="$extract_apps priv-app/Weather"
+            extract_apps="$extract_apps priv-app/MIUIWeather"
         fi
     fi
 
@@ -346,44 +318,34 @@ extract() {
             deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" $system_img || clean "$work_dir"
         done
     fi
-    if [ "$ENABLE_EUFIX" = true ]; then
-        for f in $eufix_apps; do
-            deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" $system_img || clean "$work_dir"
-        done
-    fi
 
     echo "--> packaging flashable zip"
     pushd deodex
     ubin=META-INF/com/google/android
     mkdir -p $ubin
-    cp "$tool_dir/magisk-update-binary" "$ubin/update-binary"
-    cp "$tool_dir/updater-script" "$ubin/updater-script"
-    versionCode=$(grep versionCode= "$tool_dir/module.prop" | cut -d '=' -f 2)
+    magisk_dir="$tool_dir/magisk"
+    cp "$magisk_dir/magisk-update-binary" "$ubin/update-binary"
+    cp "$magisk_dir/updater-script" "$ubin/updater-script"
+    versionCode=$(grep versionCode= "$magisk_dir/module.prop" | cut -d '=' -f 2)
     versionCode=$(($versionCode+1))
-    $sed -i "s/versionCode=.*/versionCode=$versionCode/" "$tool_dir/module.prop"
-    cp "$tool_dir/module.prop" module.prop
-    cp "$tool_dir/customize.sh" customize.sh
+    $sed -i "s/versionCode=.*/versionCode=$versionCode/" "$magisk_dir/module.prop"
+    cp "$magisk_dir/module.prop" module.prop
     moduleId=eufix
     moduleName=aio
-    moduleDesc="miui eu 欧版本地化模块，添加兰亭pro字体、钱包、门禁、日历显示农历、天气源修改、闹钟支持工作日等"
-    if [ "$ENABLE_AIO" = true ]; then
-        cp "$tool_dir/system.prop" system.prop
-    elif [ "$ENABLE_FONTS" = true ]; then
+    moduleDesc="miui eu 欧版本地化模块"
+    if [ "$ENABLE_FONTS" = true ]; then
         moduleId=eufix_fonts
         moduleName=fonts
-        moduleDesc="miui eu 欧版使用兰亭pro字体"
-        cp "$tool_dir/customize-fonts.sh" customize.sh
+        moduleDesc="miui eu 欧版使用兰亭pro字体 monwf@github"
+        cp "$magisk_dir/customize-fonts.sh" customize.sh
     elif [ "$ENABLE_MIPAY" = true ]; then
         moduleId=eufix_mipay
         moduleName=mipay
-        moduleDesc="miui eu 欧版添加钱包、门禁、允许更新系统应用等功能"
-        cp "$tool_dir/system.prop" system.prop
-    elif [ "$ENABLE_EUFIX" = true ]; then
-        moduleId=eufix_l10n
-        moduleName=l10n
-        moduleDesc="miui eu 欧版添加日历显示农历、天气源修改、闹钟支持工作日等功能"
+        moduleDesc="miui eu 欧版添加钱包、门禁、允许更新系统应用等功能 monwf@github"
+        cp "$magisk_dir/system.prop" system.prop
+        cp "$magisk_dir/customize.sh" customize.sh
+#        cp "$magisk_dir/service.sh" service.sh
     fi
-    ENABLE_AIO=true
     $sed -i "s/version=.*/version=$model-$ver/" module.prop
     $sed -i "s/id=.*/id=$moduleId-MonwF/" module.prop
     $sed -i "s/name=.*/name=miui eu rom $moduleName patch by MonwF@github/" module.prop
