@@ -298,10 +298,10 @@ extract() {
         if [[ "$file_list" == *Weather* ]]; then
             echo "----> copying chinese Weather..."
             $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/MIUIWeather >/dev/null || clean "$work_dir"
-            mkdir -p deodex/system/priv-app/MIUIWeather
-            cp deodex/system/data-app/MIUIWeather/MIUIWeather.apk deodex/system/priv-app/MIUIWeather/MIUIWeather.apk
+            mkdir -p deodex/system/priv-app/Weather
+            cp deodex/system/data-app/MIUIWeather/MIUIWeather.apk deodex/system/priv-app/Weather/Weather.apk
             rm -rf deodex/system/data-app/
-            extract_apps="$extract_apps priv-app/MIUIWeather"
+            extract_apps="$extract_apps priv-app/Weather"
         fi
     fi
 
