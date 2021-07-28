@@ -334,6 +334,8 @@ extract() {
         cp "$magisk_dir/customize.sh" customize.sh
         mkdir -p system/etc/permissions
         cp "$magisk_dir/privapp-permissions-mipay.xml" system/etc/permissions
+        mkdir -p system/media/theme/default
+        cp "$magisk_dir/com.android.calendar" system/media/theme/default
     fi
     $sed -i "s/version=.*/version=$model-$ver/" module.prop
     $sed -i "s/id=.*/id=$moduleId-MonwF/" module.prop
