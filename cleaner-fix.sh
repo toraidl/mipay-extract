@@ -30,6 +30,7 @@ esac
 done
 
 extract_apps="app/MIpay app/NextPay app/TSMClient app/UPTsmService priv-app/YellowPage"
+eufix_apps="Weather"
 
 base_dir=$PWD
 tool_dir=$base_dir/tools
@@ -39,8 +40,7 @@ heapsize=1024
 smali="java -Xmx${heapsize}m -jar $tool_dir/smali-2.4.0.jar"
 baksmali="java -Xmx${heapsize}m -jar $tool_dir/baksmali-2.4.0.jar"
 keypass="--ks-pass pass:testkey --key-pass pass:testkey"
-sign="java -Xmx${heapsize}m -jar $tool_dir/apksigner.jar sign \
-      --ks $tool_dir/testkey.jks $keypass"
+sign="java -Xmx${heapsize}m -jar $tool_dir/apksigner.jar sign --ks $tool_dir/testkey.jks $keypass"
 libmd="libmd.txt"
 libln="libln.txt"
 aria2c_opts="--check-certificate=false --file-allocation=trunc -s10 -x10 -j10 -c"
@@ -153,7 +153,7 @@ deodex() {
     apkdir=$deoappdir/$app
     apkfile=$apkdir/$app.apk
     file_list="$($sevenzip l "$apkfile")"
-    if [[ "$file_list" == *"classes.dex"* && "$extract_apps" == *"$app"* ]]; then
+    if [[ "$extract_apps" == *"$app"* && "$eufix_apps" != *"$app"* ]]; then
         echo "--> already deodexed $app"
         if [[ "$app" != "UPTsmService" && -d "$apkdir/lib/$arch" ]]; then
             echo "mkdir -p /$apkdir/lib/$arch" >> $libmd
@@ -181,6 +181,10 @@ deodex() {
         echo "--> decompiling $app..."
         dexclass="classes.dex"
         $baksmali d $apkfile -o $apkdir/smali || return 1
+
+        if [[ "$app" == "Weather" ]]; then
+            update_international_build_flag "$apkdir/smali/com/miui/weather2"
+        fi
 
         api=30
         $smali assemble -a $api $apkdir/smali -o $apkdir/$dexclass || return 1
@@ -230,7 +234,7 @@ extract() {
     model=$1
     ver=$2
     file=$3
-    local extract_apps=$5
+    local extract_apps=$4
     dir=miui-$model-$ver
     img=$dir-system.img
 
@@ -282,15 +286,15 @@ extract() {
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}etc/yellowpage >/dev/null || clean "$work_dir"
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}cust >/dev/null || clean "$work_dir"
 
-        # file_list="$($sevenzip l "$img" ${imgroot}data-app/MIUIWeather)"
-        # if [[ "$file_list" == *Weather* ]]; then
-        #     echo "----> copying chinese Weather..."
-        #     $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/MIUIWeather >/dev/null || clean "$work_dir"
-        #     mkdir -p deodex/system/priv-app/Weather
-        #     cp deodex/system/data-app/MIUIWeather/MIUIWeather.apk deodex/system/priv-app/Weather/Weather.apk
-        #     rm -rf deodex/system/data-app/
-        #     extract_apps="$extract_apps priv-app/Weather"
-        # fi
+        file_list="$($sevenzip l "$img" ${imgroot}data-app/MIUIWeather)"
+        if [[ "$file_list" == *Weather* ]]; then
+            echo "----> copying chinese Weather..."
+            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/MIUIWeather >/dev/null || clean "$work_dir"
+            mkdir -p deodex/system/priv-app/Weather
+            cp deodex/system/data-app/MIUIWeather/MIUIWeather.apk deodex/system/priv-app/Weather/Weather.apk
+            rm -rf deodex/system/data-app/
+            extract_apps="$extract_apps priv-app/Weather"
+        fi
     fi
 
     if [ "$ENABLE_FONTS" = true ]; then
@@ -323,13 +327,13 @@ extract() {
     moduleDesc="miui eu 欧版本地化模块"
     if [ "$ENABLE_FONTS" = true ]; then
         moduleId=eufix_fonts
-        moduleName=fonts
-        moduleDesc="miui eu 欧版使用兰亭pro字体 monwf@github"
+        moduleName="兰亭Pro"
+        moduleDesc="MIUI eu 全局兰亭pro字体模块 by MonwF@github"
         cp "$magisk_dir/customize-fonts.sh" customize.sh
     elif [ "$ENABLE_MIPAY" = true ]; then
         moduleId=eufix_mipay
-        moduleName=mipay
-        moduleDesc="miui eu 欧版添加钱包、门禁、允许更新系统应用等功能 monwf@github"
+        moduleName="MIpay patch"
+        moduleDesc="MIUI eu 支持钱包、门禁、农历、mipush等功能 by MonwF@github"
         cp "$magisk_dir/system.prop" system.prop
         cp "$magisk_dir/customize.sh" customize.sh
         mkdir -p system/etc/permissions
@@ -339,7 +343,7 @@ extract() {
     fi
     $sed -i "s/version=.*/version=$model-$ver/" module.prop
     $sed -i "s/id=.*/id=$moduleId-MonwF/" module.prop
-    $sed -i "s/name=.*/name=miui eu rom $moduleName patch by MonwF@github/" module.prop
+    $sed -i "s/name=.*/name=MIUI eu $moduleName/" module.prop
     $sed -i "s/description=.*/description=$moduleDesc/" module.prop
     rm -f ../../$moduleId-$model-$ver.zip $libmd $libln system/build.prop
     $sevenzip a -tzip ../../$moduleId-$model-$ver.zip . >/dev/null
@@ -372,7 +376,7 @@ for f in *.zip; do
     fi
     model=${arr[1]}
     ver=${arr[2]}
-    extract $model $ver $f "$eufix_apps" "$extract_apps"
+    extract $model $ver $f "$extract_apps"
     hasfile=true
 done
 
