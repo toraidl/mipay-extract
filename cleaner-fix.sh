@@ -30,7 +30,6 @@ esac
 done
 
 extract_apps="app/MIpay app/NextPay app/TSMClient app/UPTsmService priv-app/YellowPage"
-# app/MiuiSuperMarket priv-app/ContentExtension
 
 base_dir=$PWD
 tool_dir=$base_dir/tools
@@ -183,17 +182,6 @@ deodex() {
         dexclass="classes.dex"
         $baksmali d $apkfile -o $apkdir/smali || return 1
 
-        if [[ "$app" == "services.jar" ]]; then
-            i="$apkdir/smali/com/android/server/net/NetworkStatsService.smali"
-            $sed -i 's|, 0x200000$|, 0x5000000|g' "$i" || return 1
-            $sed -i 's|, 0x20000$|, 0x1000000|g' "$i" || return 1
-            if grep -q -F ', 0x20000' $i; then
-                echo "----> ! failed to patch: $(basename $i)"
-            else
-                echo "----> patched smali: $(basename $i)"
-            fi
-        fi
-
         api=30
         $smali assemble -a $api $apkdir/smali -o $apkdir/$dexclass || return 1
         rm -rf $apkdir/smali
@@ -344,7 +332,8 @@ extract() {
         moduleDesc="miui eu 欧版添加钱包、门禁、允许更新系统应用等功能 monwf@github"
         cp "$magisk_dir/system.prop" system.prop
         cp "$magisk_dir/customize.sh" customize.sh
-#        cp "$magisk_dir/service.sh" service.sh
+        mkdir -p system/etc/permissions
+        cp "$magisk_dir/privapp-permissions-mipay.xml" system/etc/permissions
     fi
     $sed -i "s/version=.*/version=$model-$ver/" module.prop
     $sed -i "s/id=.*/id=$moduleId-MonwF/" module.prop
