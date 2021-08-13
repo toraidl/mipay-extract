@@ -299,7 +299,6 @@ extract() {
 
     if [ "$ENABLE_FONTS" = true ]; then
         echo "---> extract fonts"
-        $sevenzip x -odeodex/ "$img" ${imgroot}etc/fonts.xml >/dev/null || clean "$work_dir"
         $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiSansVF.ttf >/dev/null || clean "$work_dir"
     fi
 
@@ -330,6 +329,8 @@ extract() {
         moduleName="兰亭Pro"
         moduleDesc="MIUI eu 全局兰亭pro字体模块 by MonwF@github"
         cp "$magisk_dir/customize-fonts.sh" customize.sh
+        mkdir -p system/etc/
+        cp "$magisk_dir/fonts.xml" system/etc/
     elif [ "$ENABLE_MIPAY" = true ]; then
         moduleId=eufix_mipay
         moduleName="MIpay patch"
@@ -337,9 +338,9 @@ extract() {
         cp "$magisk_dir/system.prop" system.prop
         cp "$magisk_dir/customize.sh" customize.sh
         mkdir -p system/etc/permissions
-        cp "$magisk_dir/privapp-permissions-mipay.xml" system/etc/permissions
+        cp "$magisk_dir/privapp-permissions-mipay.xml" system/etc/permissions/
         mkdir -p system/media/theme/default
-        cp "$magisk_dir/com.android.calendar" system/media/theme/default
+        cp "$magisk_dir/com.android.calendar" system/media/theme/default/
     fi
     $sed -i "s/version=.*/version=$model-$ver/" module.prop
     $sed -i "s/id=.*/id=$moduleId-MonwF/" module.prop
