@@ -29,7 +29,7 @@ case $key in
 esac
 done
 
-extract_apps="app/MIpay app/NextPay app/TSMClient app/UPTsmService priv-app/YellowPage"
+extract_apps="app/MIpay app/NextPay app/TSMClient app/UPTsmService priv-app/MIUIYellowPage priv-app/MIUICalendar"
 eufix_apps="Weather"
 
 base_dir=$PWD
@@ -297,10 +297,10 @@ extract() {
         fi
     fi
 
-    if [ "$ENABLE_FONTS" = true ]; then
-        echo "---> extract fonts"
-        $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiSansVF.ttf >/dev/null || clean "$work_dir"
-    fi
+    # if [ "$ENABLE_FONTS" = true ]; then
+        # echo "---> extract fonts"
+        # $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiSansVF.ttf >/dev/null || clean "$work_dir"
+    # fi
 
     arch="arm64"
     local system_img="$PWD/$img"
@@ -331,6 +331,8 @@ extract() {
         cp "$magisk_dir/customize-fonts.sh" customize.sh
         mkdir -p system/etc/
         cp "$magisk_dir/fonts.xml" system/etc/
+        mkdir -p system/fonts/
+        cp "$magisk_dir/MiSansVF.ttf" system/fonts/
     elif [ "$ENABLE_MIPAY" = true ]; then
         moduleId=eufix_mipay
         moduleName="MIpay patch"
