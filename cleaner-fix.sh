@@ -29,13 +29,14 @@ case $key in
 esac
 done
 
-extract_apps="app/MIpay app/NextPay app/TSMClient app/UPTsmService priv-app/MIUIYellowPage priv-app/MIUICalendar"
-eufix_apps="Weather"
+extract_apps="app/MITSMClient app/MIUPTsmService priv-app/MIUIYellowPage priv-app/MIUICalendar"
+eufix_apps=""
 
 base_dir=$PWD
 tool_dir=$base_dir/tools
 sdat2img="python2.7 $tool_dir/sdat2img.py"
 patchmethod="python2.7 $tool_dir/patchmethod.py"
+payload_dumper="$tool_dir/payload-dumper-go"
 heapsize=1024
 smali="java -Xmx${heapsize}m -jar $tool_dir/smali-2.4.0.jar"
 baksmali="java -Xmx${heapsize}m -jar $tool_dir/baksmali-2.4.0.jar"
@@ -68,12 +69,12 @@ check() {
 check java python2.7
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    aapt="$tool_dir/darwin/aapt"
+    aapt="aapt"
     zipalign="$tool_dir/darwin/zipalign"
     sevenzip="$tool_dir/darwin/7za"
     aria2c="$tool_dir/darwin/aria2c $aria2c_opts"
     sed="$tool_dir/darwin/gsed"
-    brotli="$tool_dir/darwin/brotli"
+    brotli="brotli"
 else
     exists aapt && aapt="aapt" || aapt="$tool_dir/aapt"
     exists zipalign && zipalign="zipalign" || zipalign="$tool_dir/zipalign"
@@ -234,39 +235,46 @@ extract() {
     model=$1
     ver=$2
     file=$3
+    partition=system
     local extract_apps=$4
     dir=miui-$model-$ver
-    img=$dir-system.img
+    img=$dir-$partition.img
 
     echo "--> rom: $model v$ver"
     [ -d $dir ] || mkdir $dir
     pushd $dir
     if ! [ -f $img ]; then
-        trap "clean \"$PWD/system.new.dat\"" INT
-        if ! [ -f system.new.dat ]; then
-            filelist="$($sevenzip l ../"$file")"
-            if [[ "$filelist" == *system.new.dat.br* ]]; then
-                $sevenzip x ../$file "system.new.dat.br" "system.transfer.list" \
-                || clean system.new.dat.br
-                $brotli -d system.new.dat.br && rm -f system.new.dat.br
+        trap "clean \"$PWD/$partition.new.dat\"" INT
+        filelist="$($sevenzip l ../"$file")"
+        if [[ "$filelist" == *payload.bin* ]]; then
+            $sevenzip x ../$file payload.bin payload.bin
+            $payload_dumper -p $partition -o output payload.bin
+            mv output/$partition.img $dir-$partition.img
+            rm payload.bin
+            rm -rf output
+        else
+            if [[ "$filelist" == *$partition.new.dat.br* ]]; then
+                $sevenzip x ../$file "$partition.new.dat.br" "$partition.transfer.list" \
+                || clean $partition.new.dat.br
+                $brotli -d $partition.new.dat.br && rm -f $partition.new.dat.br
             else
-                $sevenzip x ../$file "system.new.dat" "system.transfer.list" \
-                || clean system.new.dat
+                $sevenzip x ../$file "$partition.new.dat" "$partition.transfer.list" \
+                || clean $partition.new.dat
             fi
+            $sdat2img $partition.transfer.list $partition.new.dat $img 2>/dev/null \
+            && rm -f "$partition.new.dat" "$partition.transfer.list"
         fi
     fi
     trap "clean \"$PWD/$img\"" INT
     if ! [ -f $img ]; then
-        $sdat2img system.transfer.list system.new.dat $img 2>/dev/null \
-        && rm -f "system.new.dat" "system.transfer.list" \
-        || clean $img
+        clean $img
     fi
 
     echo "--> image extracted: $img"
     work_dir="$PWD/deodex"
     trap "clean \"$work_dir\"" INT
     rm -Rf deodex
-    mkdir -p deodex/system
+    mkdir -p deodex/$partition
 
     detect="$($sevenzip l "$img" system/build.prop)"
     if [[ "$detect" == *"build.prop"* ]]; then
@@ -286,15 +294,16 @@ extract() {
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}etc/yellowpage >/dev/null || clean "$work_dir"
         $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}cust >/dev/null || clean "$work_dir"
 
-        file_list="$($sevenzip l "$img" ${imgroot}data-app/MIUIWeather)"
-        if [[ "$file_list" == *Weather* ]]; then
-            echo "----> copying chinese Weather..."
-            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/MIUIWeather >/dev/null || clean "$work_dir"
+        # file_list="$($sevenzip l "$img" ${imgroot}data-app/MIUIWeather)"
+        # if [[ "$file_list" == *Weather* ]]; then
+        #     echo "----> copying chinese Weather..."
+        #     $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/MIUIWeather >/dev/null || clean "$work_dir"
             mkdir -p deodex/system/priv-app/Weather
-            cp deodex/system/data-app/MIUIWeather/MIUIWeather.apk deodex/system/priv-app/Weather/Weather.apk
-            rm -rf deodex/system/data-app/
-            extract_apps="$extract_apps priv-app/Weather"
-        fi
+            touch deodex/system/priv-app/Weather/.replace
+        #     cp deodex/system/data-app/MIUIWeather/MIUIWeather.apk deodex/system/priv-app/Weather/Weather.apk
+        #     rm -rf deodex/system/data-app/
+        #     extract_apps="$extract_apps priv-app/Weather"
+        # fi
     fi
 
     # if [ "$ENABLE_FONTS" = true ]; then
