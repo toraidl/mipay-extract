@@ -29,7 +29,7 @@ case $key in
 esac
 done
 
-extract_apps="app/MITSMClient app/MIUPTsmService priv-app/MIUIYellowPage priv-app/MIUICalendar"
+extract_apps="app/MITSMClient app/UPTsmService priv-app/MIUIYellowPage priv-app/MIUICalendar"
 eufix_apps=""
 
 base_dir=$PWD
