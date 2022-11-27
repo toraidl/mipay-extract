@@ -306,10 +306,10 @@ extract() {
         # fi
     fi
 
-    # if [ "$ENABLE_FONTS" = true ]; then
-        # echo "---> extract fonts"
-        # $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiSansVF.ttf >/dev/null || clean "$work_dir"
-    # fi
+    if [ "$ENABLE_FONTS" = true ]; then
+        echo "---> extract fonts"
+        $sevenzip x -odeodex/ "$img" ${imgroot}fonts/MiSansVF.ttf >/dev/null || clean "$work_dir"
+    fi
 
     arch="arm64"
     local system_img="$PWD/$img"
@@ -341,7 +341,7 @@ extract() {
         mkdir -p system/etc/
         cp "$magisk_dir/fonts.xml" system/etc/
         mkdir -p system/fonts/
-        cp "$magisk_dir/MiSansVF.ttf" system/fonts/
+        # cp "$magisk_dir/MiSansVF.ttf" system/fonts/
     elif [ "$ENABLE_MIPAY" = true ]; then
         moduleId=eufix_mipay
         moduleName="MIpay patch"
