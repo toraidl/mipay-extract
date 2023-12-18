@@ -47,8 +47,8 @@ libln="libln.txt"
 aria2c_opts="--check-certificate=false --file-allocation=trunc -s10 -x10 -j10 -c"
 aria2c="aria2c $aria2c_opts"
 sed="sed"
-imgroot=""
-imgexroot="system/"
+imgroot="system/"
+extractbin="${HOME}/bin/extract.erofs"
 
 exists() {
   command -v "$1" >/dev/null 2>&1
@@ -149,36 +149,12 @@ deodex() {
     base_dir="$1"
     arch=$3
     system_img=$5
-    deoappdir=system/$4
+    deoappdir=$4
     pushd "$base_dir"
     apkdir=$deoappdir/$app
     apkfile=$apkdir/$app.apk
     file_list="$($sevenzip l "$apkfile")"
-    if [[ "$extract_apps" == *"$app"* && "$eufix_apps" != *"$app"* ]]; then
-        echo "--> already deodexed $app"
-        if [[ "$app" != "UPTsmService" && -d "$apkdir/lib/$arch" ]]; then
-            echo "mkdir -p /$apkdir/lib/$arch" >> $libmd
-            for f in $apkdir/lib/$arch/*.so; do
-                if ! grep -q ELF $f; then
-                    fname=$(basename $f)
-                    orig="$(cat $f)"
-                    imgpath="${orig#*system/}"
-                    imglist="$($sevenzip l "$system_img" "${imgroot}$imgpath")"
-                    if [[ "$imglist" == *"$imgpath"* ]]; then
-                        echo "----> copy native library $fname"
-                        output_dir=$apkdir/lib/$arch/tmp
-                        $sevenzip x -o"$output_dir" "$system_img" "${imgroot}$imgpath" >/dev/null || return 1
-                        mv "$output_dir/${imgroot}$imgpath" $f
-                        rm -Rf $output_dir
-                    else
-                        echo "ln -s $orig /$apkdir/lib/$arch/$fname" >> $libln
-                        rm -f "$f"
-                    fi
-                fi
-            done
-            [ -z "$(ls -A $apkdir/lib/$arch)" ] && rm -rf "$apkdir/lib"
-        fi
-    elif [[ "$file_list" == *"classes.dex"* ]]; then
+    if [[ "$eufix_apps" == *"$app"* && "$file_list" == *"classes.dex"* ]]; then
         echo "--> decompiling $app..."
         dexclass="classes.dex"
         $baksmali d $apkfile -o $apkdir/smali || return 1
@@ -235,12 +211,12 @@ extract() {
     model=$1
     ver=$2
     file=$3
-    partition=system
+    partition=product
     local extract_apps=$4
     dir=miui-$model-$ver
     img=$dir-$partition.img
 
-    echo "--> rom: $model v$ver"
+    echo "--> rom: $model $ver"
     [ -d $dir ] || mkdir $dir
     pushd $dir
     if ! [ -f $img ]; then
@@ -252,17 +228,6 @@ extract() {
             mv output/$partition.img $dir-$partition.img
             rm payload.bin
             rm -rf output
-        else
-            if [[ "$filelist" == *$partition.new.dat.br* ]]; then
-                $sevenzip x ../$file "$partition.new.dat.br" "$partition.transfer.list" \
-                || clean $partition.new.dat.br
-                $brotli -d $partition.new.dat.br && rm -f $partition.new.dat.br
-            else
-                $sevenzip x ../$file "$partition.new.dat" "$partition.transfer.list" \
-                || clean $partition.new.dat
-            fi
-            $sdat2img $partition.transfer.list $partition.new.dat $img 2>/dev/null \
-            && rm -f "$partition.new.dat" "$partition.transfer.list"
         fi
     fi
     trap "clean \"$PWD/$img\"" INT
@@ -274,14 +239,7 @@ extract() {
     work_dir="$PWD/deodex"
     trap "clean \"$work_dir\"" INT
     rm -Rf deodex
-    mkdir -p deodex/$partition
-
-    detect="$($sevenzip l "$img" system/build.prop)"
-    if [[ "$detect" == *"build.prop"* ]]; then
-        echo "--> detected new image structure"
-        imgroot="system/"
-        imgexroot=""
-    fi
+    mkdir -p deodex/$imgroot$partition
 
     rm -f "$work_dir"/{$libmd,$libln}
     touch "$work_dir"/{$libmd,$libln}
@@ -289,21 +247,15 @@ extract() {
     if [ "$ENABLE_MIPAY" = true ]; then
         for f in $extract_apps; do
             echo "----> copying extract $f..."
-            $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}$f >/dev/null || clean "$work_dir"
+            $extractbin -o extractapps -i "$img" -X $f >/dev/null || clean "$work_dir"
         done
-        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}etc/yellowpage >/dev/null || clean "$work_dir"
-        $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}cust >/dev/null || clean "$work_dir"
 
-        # file_list="$($sevenzip l "$img" ${imgroot}data-app/MIUIWeather)"
-        # if [[ "$file_list" == *Weather* ]]; then
-        #     echo "----> copying chinese Weather..."
-        #     $sevenzip x -odeodex/${imgexroot} "$img" ${imgroot}data-app/MIUIWeather >/dev/null || clean "$work_dir"
-            mkdir -p deodex/system/priv-app/Weather
-            touch deodex/system/priv-app/Weather/.replace
-        #     cp deodex/system/data-app/MIUIWeather/MIUIWeather.apk deodex/system/priv-app/Weather/Weather.apk
-        #     rm -rf deodex/system/data-app/
-        #     extract_apps="$extract_apps priv-app/Weather"
-        # fi
+        mv extractapps/miui-*/* deodex/$imgroot$partition/
+        rm -rf extractapps
+        mkdir -p deodex/system/product/priv-app/Weather
+        touch deodex/system/product/priv-app/Weather/.replace
+        mkdir -p deodex/system/product/priv-app/Calendar
+        touch deodex/system/product/priv-app/Calendar/.replace
     fi
 
     if [ "$ENABLE_FONTS" = true ]; then
@@ -315,7 +267,7 @@ extract() {
     local system_img="$PWD/$img"
     if [ "$ENABLE_MIPAY" = true ]; then
         for f in $extract_apps; do
-            deodex "$work_dir" "$(basename $f)" "$arch" "$(dirname $f)" $system_img || clean "$work_dir"
+            deodex "$work_dir" "$(basename $f)" "$arch" $imgroot$partition/"$(dirname $f)" $system_img || clean "$work_dir"
         done
     fi
 
